@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+		"module": "CommonJS",
+		"lib": ["es2020", "esnext.asynciterable"],
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitThis": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": false,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": false,
+    "sourceMap": true,
+    "inlineSources": true,
+    "sourceRoot": "/",
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*"]
+}

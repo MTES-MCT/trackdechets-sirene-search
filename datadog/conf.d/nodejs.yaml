@@ -1,0 +1,10 @@
+init_config:
+
+instances:
+
+logs:
+  - type: file
+    path: /app/logs/trackdechets-search.log
+    service: trackdechets-sirene-search
+    source: nodejs
+    sourcecategory: sourcecode

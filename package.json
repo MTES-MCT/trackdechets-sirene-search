@@ -1,0 +1,54 @@
+{
+  "name": "trackdechets-search",
+  "version": "1.3.0",
+  "description": "Search index for organisations on Trackdéchets",
+  "main": "src/index.ts",
+  "scripts": {
+    "scalingo-postbuild": "npm run build && npm prune --production",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "npm run build",
+    "index": "npm run index:sirene && npm run index:siret",
+    "index:dev": "export NODE_ENV=dev && docker-compose up -d elasticsearch && npm run build && npm run index:sirene && npm run index:siret",
+    "index:sirene": "node dist/src/commands/indexInseeSirene.js",
+    "index:siret": "node dist/src/commands/indexInseeSiret.js",
+    "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9200 (ensure that docker-compose up has been executed)' && wait-on tcp:9200 -t 60000 -l",
+    "test": "jest --detectOpenHandles"
+  },
+  "engines": {
+    "node": "^18",
+    "npm": "^9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MTES-MCT/trackdechets-sirene-search.git"
+  },
+  "keywords": [
+    "data",
+    "indexation",
+    "search",
+    "elasticsearch",
+    "typescript"
+  ],
+  "author": "Trackdechets Devs <tech@trackdechets.beta.gouv.fr>",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/MTES-MCT/trackdechets-sirene-search/issues"
+  },
+  "homepage": "https://github.com/MTES-MCT/trackdechets-sirene-search/blob/main/search/README.md",
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "wait-on": "^7.0.1"
+  },
+  "dependencies": {
+    "@types/jest": "^29.5.1",
+    "@elastic/elasticsearch": "^7.17.0",
+    "app-root-path": "^3.1.0",
+    "dd-trace": "^3.18.0",
+    "fast-csv": "^4.3.6",
+    "node-stream-zip": "^1.15.0",
+    "typescript": "^5.0.4",
+    "winston": "^3.8.2"
+  }
+}
