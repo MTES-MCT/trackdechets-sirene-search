@@ -13,7 +13,7 @@
     "index:sirene": "node dist/src/commands/indexInseeSirene.js",
     "index:siret": "node dist/src/commands/indexInseeSiret.js",
     "index:siret:csv": "node dist/src/commands/indexInseeSiretCsv.js",
-    "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9200 (ensure that docker-compose up has been executed)' && wait-on tcp:9200 -t 60000 -l",
+    "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9201 (ensure that docker-compose up has been executed)' && wait-on tcp:9201 -t 60000 -l",
     "test": "jest --detectOpenHandles",
     "lint": "eslint -c .eslintrc.js --ext .ts ./src"
   },

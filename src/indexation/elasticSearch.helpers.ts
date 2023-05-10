@@ -22,7 +22,7 @@ import {
 import { INDEX_ALIAS_NAME_SEPARATOR } from "./indexInsee.helpers";
 
 const pipeline = util.promisify(stream.pipeline);
-const pjson = require("../../../package.json");
+const pjson = require("../../package.json");
 
 // Max size of documents to bulk index, depends on ES JVM memory available
 const CHUNK_SIZE: number =
