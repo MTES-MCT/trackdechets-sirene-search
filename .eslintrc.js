@@ -4,20 +4,20 @@ module.exports = {
       typescript: {},
       node: {
         extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
-        moduleDirectory: ["src", "node_modules"]
-      }
-    }
+        moduleDirectory: ["src", "node_modules"],
+      },
+    },
   },
   parser: "@typescript-eslint/parser",
   extends: [
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended",
     "plugin:import/recommended",
-    "plugin:import/typescript"
+    "plugin:import/typescript",
   ],
   parserOptions: {
     ecmaVersion: 2018,
-    sourceType: "module"
+    sourceType: "module",
   },
   plugins: ["no-only-tests"],
   rules: {
@@ -32,23 +32,23 @@ module.exports = {
         args: "after-used",
         varsIgnorePattern: "^_",
         argsIgnorePattern: "^_",
-        ignoreRestSiblings: true
-      }
+        ignoreRestSiblings: true,
+      },
     ],
     "no-only-tests/no-only-tests": "error",
     "import/no-extraneous-dependencies": [
       "error",
       {
-        devDependencies: ["**/__tests__/**"]
-      }
-    ]
+        devDependencies: ["**/__tests__/**"],
+      },
+    ],
   },
   overrides: [
     {
       files: ["*.ts"],
       rules: {
-        "@typescript-eslint/no-var-requires": "off"
-      }
-    }
-  ]
+        "@typescript-eslint/no-var-requires": "off",
+      },
+    },
+  ],
 };
