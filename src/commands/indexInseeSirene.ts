@@ -18,7 +18,7 @@ const sireneUrl =
   "https://files.data.gouv.fr/insee-sirene/StockUniteLegale_utf8.zip";
 
 process.on("exit", function () {
-  console.log(`Command indexInseeSirene.ts finished`);
+  console.log(`Command index:sirene finished`);
   logger.end();
 });
 
@@ -41,4 +41,5 @@ process.on("exit", function () {
   } else {
     await downloadAndIndex(sireneUrl, sireneIndexConfig);
   }
+  logger.info("Command index:sirene finished");
 })();

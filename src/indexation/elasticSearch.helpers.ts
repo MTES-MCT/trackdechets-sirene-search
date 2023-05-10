@@ -126,14 +126,23 @@ export const bulkIndex = async (
         // nothing to index
         return Promise.resolve(null);
       }
-      const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
-        body,
-        // lighten the response
-        _source_excludes: ["items.index._*", "took"]
-      });
-      // Log error data and continue
-      if (bulkResponse) {
-        await logBulkErrorsAndRetry(bulkResponse.body, body);
+
+      try {
+        const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
+          body,
+          // lighten the response
+          _source_excludes: ["items.index._*", "took"]
+        });
+        // Log error data and continue
+        if (bulkResponse) {
+          await logBulkErrorsAndRetry(bulkResponse.body, body);
+        }
+      } catch (bulkIndexError) {
+        // avoid dumping huge errors to the logger
+        logger.error(
+          `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`, bulkIndexError
+        );
+        return;
       }
     };
     if (bodyChunk.length) {
@@ -269,18 +278,13 @@ export const getWritableParserAndIndexer = (
   });
 
 /**
- * Streaming unzip, formatting documents and index them
+ * Stream CSV to index them in bulk
  */
-export const unzipAndIndex = async (
-  zipPath: string,
-  destination: string,
+export const streamReadAndIndex = async (
+  csvPath: string,
+  indexName: string,
   indexConfig: IndexProcessConfig
 ): Promise<string> => {
-  const indexName = await createIndexRelease(indexConfig);
-  const zip = new StreamZip.async({ file: zipPath });
-  const csvPath = path.join(destination, indexConfig.csvFileName);
-  await zip.extract(indexConfig.csvFileName, csvPath);
-  await zip.close();
   const headers = indexConfig.headers;
   const writableStream = getWritableParserAndIndexer(indexConfig, indexName);
   // stop after MAX_ROWS
@@ -305,6 +309,23 @@ export const unzipAndIndex = async (
   await cleanOldIndexes(indexConfig.alias, indexName);
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
+}
+
+/**
+ * Streaming unzip, formatting documents and index them
+ */
+export const unzipAndIndex = async (
+  zipPath: string,
+  destination: string,
+  indexConfig: IndexProcessConfig
+): Promise<string> => {
+  const indexName = await createIndexRelease(indexConfig);
+  const zip = new StreamZip.async({ file: zipPath });
+  const csvPath = path.join(destination, indexConfig.csvFileName);
+  await zip.extract(indexConfig.csvFileName, csvPath);
+  await zip.close();
+  return streamReadAndIndex(csvPath, indexName, indexConfig);
+
 };
 
 /**

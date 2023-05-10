@@ -6,7 +6,7 @@ import { siretUrl, siretIndexConfig } from "../indexation/indexInsee.helpers";
 import { unzipAndIndex, downloadAndIndex } from "../indexation/elasticSearch.helpers";
 
 process.on("exit", function () {
-  console.log("Command indexInseeSirene.ts finished");
+  console.log("Command index:siret finished");
   logger.end();
 });
 
@@ -29,5 +29,5 @@ process.on("exit", function () {
   } else {
     await downloadAndIndex(siretUrl, siretIndexConfig);
   }
-  logger.info("Command indexInseeSiret.ts finished");
+  logger.info("Command index:siret finished");
 })();

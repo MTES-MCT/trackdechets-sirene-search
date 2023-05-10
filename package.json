@@ -1,7 +1,7 @@
 {
   "name": "trackdechets-search",
   "version": "1.3.0",
-  "description": "Search index for organisations on Trackdéchets",
+  "description": "Search index for companies on Trackdéchets",
   "main": "src/index.ts",
   "scripts": {
     "scalingo-postbuild": "npm run build && npm prune --production",
@@ -12,6 +12,7 @@
     "index:dev": "export NODE_ENV=dev && docker-compose up -d elasticsearch && npm run build && npm run index:sirene && npm run index:siret",
     "index:sirene": "node dist/src/commands/indexInseeSirene.js",
     "index:siret": "node dist/src/commands/indexInseeSiret.js",
+    "index:siret:csv": "node dist/src/commands/indexInseeSiretCsv.js",
     "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9200 (ensure that docker-compose up has been executed)' && wait-on tcp:9200 -t 60000 -l",
     "test": "jest --detectOpenHandles"
   },
