@@ -1,16 +1,14 @@
 import "../common/tracer"; // tracer.init() doit précéder l'importation des modules instrumentés.
-import { existsSync } from 'fs';
+import { existsSync } from "fs";
 
 import { logger } from "../common/logger";
 import { siretIndexConfig } from "../indexation/indexInsee.helpers";
 import { streamReadAndIndex } from "../indexation/elasticSearch.helpers";
 
-
 process.on("exit", function () {
   console.log("Command index:siret:csv finished");
   logger.end();
 });
-
 
 (async function main() {
   const csvPath: string = process.argv[2];
@@ -25,7 +23,9 @@ process.on("exit", function () {
     );
     return;
   }
-  logger.info(`Démarrage de l'indexation du fichier "${csvPath}" vers ${siretIndexConfig.alias}`);
+  logger.info(
+    `Démarrage de l'indexation du fichier "${csvPath}" vers ${siretIndexConfig.alias}`
+  );
   await streamReadAndIndex(csvPath, siretIndexConfig.alias, siretIndexConfig);
   logger.info("Command index:siret:csv finished");
 })();

@@ -7,13 +7,12 @@ import util from "util";
 import {
   BulkOperationContainer,
   BulkOperationType,
-  BulkResponse
+  BulkResponse,
 } from "@elastic/elasticsearch/api/types";
 import { ApiResponse } from "@elastic/elasticsearch";
 import { parse } from "fast-csv";
 import StreamZip from "node-stream-zip";
-import { logger } from "..";
-import { elasticSearchClient as client } from "..";
+import { logger, elasticSearchClient as client } from "..";
 import {
   ElasticBulkIndexError,
   ElasticBulkNonFlatPayload,
@@ -23,10 +22,11 @@ import {
 import { INDEX_ALIAS_NAME_SEPARATOR } from "./indexInsee.helpers";
 
 const pipeline = util.promisify(stream.pipeline);
-var pjson = require("../../../package.json");
+const pjson = require("../../../package.json");
 
 // Max size of documents to bulk index, depends on ES JVM memory available
-const CHUNK_SIZE: number = parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
+const CHUNK_SIZE: number =
+  parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
 
 /**
  * Common index name formatter
@@ -49,9 +49,9 @@ export const createIndexRelease = async (
     index: indexName,
     body: {
       ...(mappings && { mappings }),
-      ...(settings && { settings })
+      ...(settings && { settings }),
     },
-    include_type_name: true // Compatibility for v7+ with _doc types
+    include_type_name: true, // Compatibility for v7+ with _doc types
   });
   logger.info(`Created a new index ${indexName}`);
   return indexName;
@@ -66,7 +66,7 @@ export const cleanOldIndexes = async (
 ) => {
   const aliases = await client.cat.aliases({
     name: indexAlias,
-    format: "json"
+    format: "json",
   });
   const bindedIndexes = aliases.body.map((info: { index: any }) => info.index);
   logger.info(
@@ -74,11 +74,13 @@ export const cleanOldIndexes = async (
   );
   client.indices.updateAliases({
     body: {
-      actions : [
-          ...(bindedIndexes.length ? [{ remove : { indices: bindedIndexes, alias: indexAlias } }] : []),
-          { add : { index: indexName, alias: indexAlias } }
-      ]
-  }
+      actions: [
+        ...(bindedIndexes.length
+          ? [{ remove: { indices: bindedIndexes, alias: indexAlias } }]
+          : []),
+        { add: { index: indexName, alias: indexAlias } },
+      ],
+    },
   });
   if (bindedIndexes.length) {
     logger.info(
@@ -88,7 +90,7 @@ export const cleanOldIndexes = async (
   // Delete old indices to save disk space, except the last
   const indices = await client.cat.indices({
     index: `${indexAlias}${INDEX_ALIAS_NAME_SEPARATOR}${pjson.version}${INDEX_ALIAS_NAME_SEPARATOR}*`,
-    format: "json"
+    format: "json",
   });
   const oldIndices: string[] = indices.body
     .map((info: { index: string }) => info.index)
@@ -131,7 +133,7 @@ export const bulkIndex = async (
         const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
           body,
           // lighten the response
-          _source_excludes: ["items.index._*", "took"]
+          _source_excludes: ["items.index._*", "took"],
         });
         // Log error data and continue
         if (bulkResponse) {
@@ -140,7 +142,8 @@ export const bulkIndex = async (
       } catch (bulkIndexError) {
         // avoid dumping huge errors to the logger
         logger.error(
-          `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`, bulkIndexError
+          `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`,
+          bulkIndexError
         );
         return;
       }
@@ -152,8 +155,13 @@ export const bulkIndex = async (
     }
     // append new data to the body before indexation
     if (typeof indexConfig.dataFormatterFn === "function") {
-      const formattedChunk = await indexConfig.dataFormatterFn(bodyChunk, indexConfig.dataFormatterExtras);
-      return requestBulkIndex(formattedChunk.flat() as BulkOperationContainer[]);
+      const formattedChunk = await indexConfig.dataFormatterFn(
+        bodyChunk,
+        indexConfig.dataFormatterExtras
+      );
+      return requestBulkIndex(
+        formattedChunk.flat() as BulkOperationContainer[]
+      );
     }
     return requestBulkIndex(bodyChunk.flat() as BulkOperationContainer[]);
   };
@@ -185,7 +193,7 @@ export const bulkIndex = async (
                   id: body[k * 2].index?._id as string,
                   body: body[k * 2 + 1],
                   type: "_doc",
-                  refresh: false
+                  refresh: false,
                 });
               } catch (err) {
                 logger.error(
@@ -198,12 +206,12 @@ export const bulkIndex = async (
             }
             // otherwise it's very likely a mapping error, and you should fix the document content
             const elasticBulkIndexError: ElasticBulkIndexError = {
-              status: action[opType]?.status!,
+              status: action[opType]?.status ?? 0,
               error: action[opType]?.error,
-              body: body[k * 2 + 1]
+              body: body[k * 2 + 1],
             };
             logger.error(`Error in bulkIndex operation`, {
-              elasticBulkIndexError
+              elasticBulkIndexError,
             });
           }
         }
@@ -237,44 +245,46 @@ export const getWritableParserAndIndexer = (
     highWaterMark: 100_000,
     objectMode: true,
     writev: (csvLines, next) => {
-      const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map((chunk, i)  => {
-        const doc = chunk.chunk;
-        // skip lines without "idKey" column because we cannot miss the _id in ES
-        if (
-          doc[indexConfig.idKey] === undefined ||
-          !doc[indexConfig.idKey].length
-        ) {
-          logger.error(
-            `skipping malformed csv line ${i} missing _id key ${indexConfig.idKey}`,
-            doc
-          );
-          return null;
-        } else if (doc[indexConfig.idKey] === indexConfig.idKey) {
-          // first line
-          return null;
-        } else {
-          return [
-            {
-              index: {
-                _id: doc[indexConfig.idKey],
-                _index: indexName,
-                // Next major ES version won't need _type anymore
-                _type: "_doc"
-              }
-            },
-            doc
-          ];
+      const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(
+        (chunk, i) => {
+          const doc = chunk.chunk;
+          // skip lines without "idKey" column because we cannot miss the _id in ES
+          if (
+            doc[indexConfig.idKey] === undefined ||
+            !doc[indexConfig.idKey].length
+          ) {
+            logger.error(
+              `skipping malformed csv line ${i} missing _id key ${indexConfig.idKey}`,
+              doc
+            );
+            return null;
+          } else if (doc[indexConfig.idKey] === indexConfig.idKey) {
+            // first line
+            return null;
+          } else {
+            return [
+              {
+                index: {
+                  _id: doc[indexConfig.idKey],
+                  _index: indexName,
+                  // Next major ES version won't need _type anymore
+                  _type: "_doc",
+                },
+              },
+              doc,
+            ];
+          }
         }
-      });
+      );
 
       bulkIndex(
-        body.filter(line => line !== null) as ElasticBulkNonFlatPayload,
+        body.filter((line) => line !== null) as ElasticBulkNonFlatPayload,
         indexConfig,
         indexName
       )
         .then(() => next())
-        .catch(err => next(err));
-    }
+        .catch((err) => next(err));
+    },
   });
 
 /**
@@ -295,9 +305,9 @@ export const streamReadAndIndex = async (
       headers,
       ignoreEmpty: true,
       discardUnmappedColumns: true,
-      ...(maxRows && { maxRows })
+      ...(maxRows && { maxRows }),
     })
-      .on("error", error => {
+      .on("error", (error) => {
         throw error;
       })
       .on("end", async (rowCount: number) => {
@@ -309,7 +319,7 @@ export const streamReadAndIndex = async (
   await cleanOldIndexes(indexConfig.alias, indexName);
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
-}
+};
 
 /**
  * Streaming unzip, formatting documents and index them
@@ -325,7 +335,6 @@ export const unzipAndIndex = async (
   await zip.extract(indexConfig.csvFileName, csvPath);
   await zip.close();
   return streamReadAndIndex(csvPath, indexName, indexConfig);
-
 };
 
 /**
@@ -344,8 +353,11 @@ export const downloadAndIndex = async (
   const zipPath = path.join(destination, indexConfig.zipFileName);
   return new Promise((resolve, reject) => {
     https
-      .get(url, res => {
-        const contentLength = parseInt(res.headers["content-length"] as string, 10);
+      .get(url, (res) => {
+        const contentLength = parseInt(
+          res.headers["content-length"] as string,
+          10
+        );
         logger.info(
           `Start downloading the INSEE archive of ${
             contentLength / 1000000
@@ -362,7 +374,7 @@ export const downloadAndIndex = async (
         let currentLength = 0;
         const file = fs.createWriteStream(zipPath);
         // monitor progress
-        res.on("data", chunk => {
+        res.on("data", (chunk) => {
           currentLength += Buffer.byteLength(chunk);
         });
         // stream into the file
@@ -386,7 +398,7 @@ export const downloadAndIndex = async (
           }
         });
       })
-      .on("error", err => {
+      .on("error", (err) => {
         logger.info("HTTP download Error: ", err.message);
         reject(err.message);
       });

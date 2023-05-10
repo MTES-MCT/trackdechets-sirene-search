@@ -4,10 +4,10 @@ import fs from "fs";
 import { logger } from "../common/logger";
 import {
   downloadAndIndex,
-  unzipAndIndex
+  unzipAndIndex,
 } from "../indexation/elasticSearch.helpers";
 
-import { sireneIndexConfig  } from "../indexation/indexInsee.helpers";
+import { sireneIndexConfig } from "../indexation/indexInsee.helpers";
 
 /**
  * StockUniteLegale data specifications
