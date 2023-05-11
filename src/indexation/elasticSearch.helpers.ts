@@ -126,122 +126,123 @@ export const finalizeNewIndexRelease = async (
 };
 
 /**
+ * Log bulkIndex errors and retries in some cases
+ */
+const logBulkErrorsAndRetry = async (
+  indexName: string,
+  bulkResponse: BulkResponse,
+  body: BulkOperationContainer[]
+) => {
+  if (bulkResponse.errors) {
+    for (let k = 0; k < bulkResponse.items.length; k++) {
+      const action = bulkResponse.items[k]!;
+      const operations: string[] = Object.keys(action);
+      for (const operation of operations) {
+        const opType = operation as BulkOperationType;
+        if (opType && action[opType]?.error) {
+          // If the status is 429 it means that we can retry the document
+          if (action[opType]?.status === 429) {
+            logger.warn(
+              `Retrying index operation for doc ${
+                body[k * 2].index?._id
+              } in index ${indexName}`
+            );
+            try {
+              await client.index({
+                index: indexName,
+                id: body[k * 2].index?._id as string,
+                body: body[k * 2 + 1],
+                type: "_doc",
+                refresh: false
+              });
+            } catch (err) {
+              logger.error(
+                `Error retrying index operation for doc ${
+                  body[k * 2].index?._id
+                } in index ${indexName}`,
+                err
+              );
+            }
+          }
+          // otherwise it's very likely a mapping error, and you should fix the document content
+          const elasticBulkIndexError: ElasticBulkIndexError = {
+            status: action[opType]?.status ?? 0,
+            error: action[opType]?.error,
+            body: body[k * 2 + 1]
+          };
+          logger.error(`Error in bulkIndex operation`, {
+            elasticBulkIndexError
+          });
+        }
+      }
+    }
+  }
+};
+
+/**
+ * bulkIndex
+ */
+const request = async (
+  indexName: string,
+  indexConfig: IndexProcessConfig,
+  bodyChunk: ElasticBulkNonFlatPayload
+): Promise<void> => {
+  /**
+   * Calls client.bulk
+   */
+  const requestBulkIndex = async (body: BulkOperationContainer[]) => {
+    if (!body || !body.length) {
+      // nothing to index
+      return Promise.resolve();
+    }
+
+    try {
+      const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
+        body,
+        // lighten the response
+        _source_excludes: ["items.index._*", "took"]
+      });
+      // Log error data and continue
+      if (bulkResponse) {
+        await logBulkErrorsAndRetry(indexName, bulkResponse.body, body);
+      }
+    } catch (bulkIndexError) {
+      // avoid dumping huge errors to the logger
+      logger.error(
+        `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`,
+        bulkIndexError
+      );
+      return;
+    }
+  };
+  if (bodyChunk.length) {
+    logger.info(
+      `Indexing ${bodyChunk.length} documents in bulk to index ${indexName}`
+    );
+  }
+  // append new data to the body before indexation
+  if (typeof indexConfig.dataFormatterFn === "function") {
+    const formattedChunk = await indexConfig.dataFormatterFn(
+      bodyChunk,
+      indexConfig.dataFormatterExtras
+    );
+    return requestBulkIndex(formattedChunk.flat() as BulkOperationContainer[]);
+  }
+  return requestBulkIndex(bodyChunk.flat() as BulkOperationContainer[]);
+};
+
+/**
  * Bulk Index and collect errors
  * controls the maximum chunk size because unzip does not
  */
-export const bulkIndex = async (
+export const bulkIndexByChunks = async (
   body: ElasticBulkNonFlatPayload,
   indexConfig: IndexProcessConfig,
   indexName: string
 ) => {
-  /**
-   * Chunk and loop on bulkIndex
-   */
-  const request = async (
-    bodyChunk: ElasticBulkNonFlatPayload
-  ): Promise<void> => {
-    /**
-     * Calls client.bulk
-     */
-    const requestBulkIndex = async (body: BulkOperationContainer[]) => {
-      if (!body || !body.length) {
-        // nothing to index
-        return Promise.resolve();
-      }
-
-      try {
-        const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
-          body,
-          // lighten the response
-          _source_excludes: ["items.index._*", "took"]
-        });
-        // Log error data and continue
-        if (bulkResponse) {
-          await logBulkErrorsAndRetry(bulkResponse.body, body);
-        }
-      } catch (bulkIndexError) {
-        // avoid dumping huge errors to the logger
-        logger.error(
-          `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`,
-          bulkIndexError
-        );
-        return;
-      }
-    };
-    if (bodyChunk.length) {
-      logger.info(
-        `Indexing ${bodyChunk.length} documents in bulk to index ${indexName}`
-      );
-    }
-    // append new data to the body before indexation
-    if (typeof indexConfig.dataFormatterFn === "function") {
-      const formattedChunk = await indexConfig.dataFormatterFn(
-        bodyChunk,
-        indexConfig.dataFormatterExtras
-      );
-      return requestBulkIndex(
-        formattedChunk.flat() as BulkOperationContainer[]
-      );
-    }
-    return requestBulkIndex(bodyChunk.flat() as BulkOperationContainer[]);
-  };
-
-  /**
-   * Log bulkIndex errors and retries in some cases
-   */
-  const logBulkErrorsAndRetry = async (
-    bulkResponse: BulkResponse,
-    body: BulkOperationContainer[]
-  ) => {
-    if (bulkResponse.errors) {
-      for (let k = 0; k < bulkResponse.items.length; k++) {
-        const action = bulkResponse.items[k]!;
-        const operations: string[] = Object.keys(action);
-        for (const operation of operations) {
-          const opType = operation as BulkOperationType;
-          if (opType && action[opType]?.error) {
-            // If the status is 429 it means that we can retry the document
-            if (action[opType]?.status === 429) {
-              logger.warn(
-                `Retrying index operation for doc ${
-                  body[k * 2].index?._id
-                } in index ${indexName}`
-              );
-              try {
-                await client.index({
-                  index: indexName,
-                  id: body[k * 2].index?._id as string,
-                  body: body[k * 2 + 1],
-                  type: "_doc",
-                  refresh: false
-                });
-              } catch (err) {
-                logger.error(
-                  `Error retrying index operation for doc ${
-                    body[k * 2].index?._id
-                  } in index ${indexName}`,
-                  err
-                );
-              }
-            }
-            // otherwise it's very likely a mapping error, and you should fix the document content
-            const elasticBulkIndexError: ElasticBulkIndexError = {
-              status: action[opType]?.status ?? 0,
-              error: action[opType]?.error,
-              body: body[k * 2 + 1]
-            };
-            logger.error(`Error in bulkIndex operation`, {
-              elasticBulkIndexError
-            });
-          }
-        }
-      }
-    }
-  };
-
   // immediat return the chunk when larger than the data streamed
   if (CHUNK_SIZE > body.length) {
-    await request(body);
+    await request(indexName, indexConfig, body);
     return;
   }
 
@@ -254,21 +255,28 @@ export const bulkIndex = async (
   )
     ? 2
     : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "2", 10);
+
   // loop over other chunks
   for (let i = 0; i < body.length; i += CHUNK_SIZE) {
     const end = i + CHUNK_SIZE;
     const slice = body.slice(i, end);
-    const promise = request(slice);
-    promises.push(promise);
-    numberOfChunkRequests++; // Increment the in-flight counter
+    const promise = request(indexName, indexConfig, slice);
+    if (maxConcurrentRequests > 1) {
+      promises.push(promise);
+      numberOfChunkRequests++; // Increment the in-flight counter
 
-    // Check if the maximum number of promises is reached
-    if (numberOfChunkRequests >= maxConcurrentRequests) {
-      await Promise.race(promises); // Wait for any one of the promises to resolve
-      numberOfChunkRequests--; // Decrement the in-flight counter
+      // Check if the maximum number of promises is reached
+      if (numberOfChunkRequests >= maxConcurrentRequests) {
+        await Promise.race(promises); // Wait for any one of the promises to resolve
+        numberOfChunkRequests--; // Decrement the in-flight counter
+      }
+    } else {
+      await request(indexName, indexConfig, slice);
     }
   }
-  await Promise.all(promises);
+  if (promises.length > 0) {
+    await Promise.all(promises);
+  }
 };
 
 /**
@@ -315,7 +323,7 @@ export const getWritableParserAndIndexer = (
         }
       );
 
-      bulkIndex(
+      bulkIndexByChunks(
         body.filter(line => line !== null) as ElasticBulkNonFlatPayload,
         indexConfig,
         indexName
@@ -355,11 +363,14 @@ export const streamReadAndIndex = async (
     writableStream
   );
   // roll-over index alias
-  if (isReleaseIndexation)
+  if (isReleaseIndexation) {
     await finalizeNewIndexRelease(indexConfig.alias, indexName);
+  }
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
 };
+
+const getCsvPath = (destination: string, indexConfig: IndexProcessConfig) => path.join(destination, indexConfig.csvFileName);
 
 /**
  * Streaming unzip, formatting documents and index them
@@ -371,10 +382,11 @@ export const unzipAndIndex = async (
 ): Promise<string> => {
   const indexName = await createIndexRelease(indexConfig);
   const zip = new StreamZip.async({ file: zipPath });
-  const csvPath = path.join(destination, indexConfig.csvFileName);
+  const csvPath = getCsvPath(destination, indexConfig);
   await zip.extract(indexConfig.csvFileName, csvPath);
   await zip.close();
-  return streamReadAndIndex(csvPath, indexName, indexConfig);
+  await streamReadAndIndex(csvPath, indexName, indexConfig);
+  return indexName;
 };
 
 /**
@@ -383,7 +395,7 @@ export const unzipAndIndex = async (
 export const downloadAndIndex = async (
   url: string,
   indexConfig: IndexProcessConfig
-) => {
+): Promise<string> => {
   // path ../../csv* is in .gitignore or override with INSEE_DOWNLOAD_DIRECTORY
   const destination = fs.mkdtempSync(
     process.env.INSEE_DOWNLOAD_DIRECTORY ||
@@ -425,14 +437,15 @@ export const downloadAndIndex = async (
           file.close();
           logger.info(`Finished downloading the INSEE archive to ${zipPath}`);
           try {
-            const csvPath = await unzipAndIndex(
+            const csvPath = getCsvPath(destination, indexConfig);
+            const indexName = await unzipAndIndex(
               zipPath,
               destination,
               indexConfig
             );
             await rm(zipPath, { force: true });
             await rm(csvPath, { force: true });
-            resolve(true);
+            resolve(indexName);
           } catch (e: any) {
             reject(e.message);
           }

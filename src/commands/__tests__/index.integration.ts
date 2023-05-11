@@ -22,20 +22,30 @@ const fixturesPath = [__dirname, "..", "..", "..", "tests", "fixtures"];
 
 describe("Perform indexation", () => {
   const unzipDestination = fs.mkdtempSync(csvTmp);
+  let previousConcurrentRequestEnv;
 
   beforeAll(() => {
     delete process.env.INSEE_SIRET_ZIP_PATH;
     delete process.env.INSEE_SIRENE_ZIP_PATH;
   });
 
-  // afterEach(resetDatabase);
+  beforeEach(async () => {
+    previousConcurrentRequestEnv =
+      process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS;
+    process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS = "1";
+  });
+
+  afterEach(async () => {
+    process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS =
+      previousConcurrentRequestEnv;
+  });
 
   afterAll(async () => {
     await rm(`${unzipDestination}`, { recursive: true, force: true });
   });
 
   it("index sirene data", async () => {
-    await unzipAndIndex(
+    const indexName = await unzipAndIndex(
       path.join(...fixturesPath, "StockUniteLegale_utf8_sample.zip"),
       unzipDestination,
       sireneIndexConfig
@@ -49,6 +59,8 @@ describe("Perform indexation", () => {
         }
       }
     };
+    // wait for the ES refresh cycle of 1sec
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {
@@ -58,12 +70,18 @@ describe("Perform indexation", () => {
         throw new Error(`${r.warnings}`);
       }
       expect(r.body.hits.hits).toBeInstanceOf(Array);
-      expect(r.body.hits.total).toEqual(4000);
+      expect(r.body.hits.total.value).toEqual(3999);
     });
+
+    const aliases = await elasticSearchClient.cat.indices({
+      index: sireneIndexConfig.alias,
+      format: "json"
+    });
+    expect(aliases.body[0].index).toContain(indexName);
   });
 
   it("index siret data", async () => {
-    await unzipAndIndex(
+    const indexName = await unzipAndIndex(
       path.join(...fixturesPath, "StockEtablissement_utf8_sample.zip"),
       unzipDestination,
       siretIndexConfig
@@ -77,6 +95,8 @@ describe("Perform indexation", () => {
         }
       }
     };
+    // wait for the ES refresh cycle of 1sec
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {
@@ -86,9 +106,9 @@ describe("Perform indexation", () => {
         throw new Error(`${r.warnings}`);
       }
       expect(r.body.hits.hits).toBeInstanceOf(Array);
-      expect(r.body.hits.total).toEqual(297);
+      expect(r.body.hits.total.value).toEqual(297);
       expect(r.body.hits.hits).toEqual(
-        expect.arrayContaining(
+        expect.arrayContaining([
           expect.objectContaining({
             _source: {
               siren: "005410345",
@@ -172,8 +192,13 @@ describe("Perform indexation", () => {
               caractereEmployeurUniteLegale: "N"
             }
           })
-        )
+        ])
       );
     });
+    const aliases = await elasticSearchClient.cat.indices({
+      index: siretIndexConfig.alias,
+      format: "json"
+    });
+    expect(aliases.body[0].index).toContain(indexName);
   });
 });

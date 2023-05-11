@@ -27,19 +27,21 @@ process.on("exit", function () {
  */
 (async function main() {
   logger.info("Starting indexation of StockUniteLegale");
+  let indexName = "";
   if (process.env.INSEE_SIRENE_ZIP_PATH) {
     // path ../../csv* is in .gitignore or override with INSEE_DOWNLOAD_DIRECTORY
     const destination = fs.mkdtempSync(
       process.env.INSEE_DOWNLOAD_DIRECTORY ||
         path.join(__dirname, "..", "..", "csv")
     );
-    await unzipAndIndex(
+    indexName = await unzipAndIndex(
       process.env.INSEE_SIRENE_ZIP_PATH,
       destination,
       sireneIndexConfig
     );
   } else {
-    await downloadAndIndex(sireneUrl, sireneIndexConfig);
+    indexName = await downloadAndIndex(sireneUrl, sireneIndexConfig);
   }
+  logger.info(`Created the new index ${indexName}`);
   logger.info("Command index:sirene finished");
 })();

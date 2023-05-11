@@ -18,19 +18,22 @@ process.on("exit", function () {
  */
 (async function main() {
   logger.info("Starting indexation of StockEtablissements");
+  let indexName = "";
   if (process.env.INSEE_SIRET_ZIP_PATH) {
     // path ../../csv* is in .gitignore or override with INSEE_DOWNLOAD_DIRECTORY
     const destination = fs.mkdtempSync(
       process.env.INSEE_DOWNLOAD_DIRECTORY ||
         path.join(__dirname, "..", "..", "csv")
     );
-    await unzipAndIndex(
+    indexName = await unzipAndIndex(
       process.env.INSEE_SIRET_ZIP_PATH,
       destination,
       siretIndexConfig
     );
+    logger.info(`Created the new index ${indexName}`);
   } else {
-    await downloadAndIndex(siretUrl, siretIndexConfig);
+    indexName = await downloadAndIndex(siretUrl, siretIndexConfig);
   }
+  logger.info(`Created the new index ${indexName}`);
   logger.info("Command index:siret finished");
 })();
