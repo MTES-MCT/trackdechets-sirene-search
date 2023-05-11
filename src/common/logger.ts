@@ -19,7 +19,7 @@ const logger_transports_fallbacks = [
   LOG_TO_CONSOLE
     ? new transports.Console({
         // Simple `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-        format: format.simple(),
+        format: format.simple()
       })
     : LOG_TO_HTTP
     ? new transports.Http({
@@ -27,9 +27,9 @@ const logger_transports_fallbacks = [
         path: `/api/v2/logs?dd-api-key=${
           process.env.DD_API_KEY
         }&ddsource=nodejs&service=${process.env.DD_APP_NAME || "search"}`,
-        ssl: true,
+        ssl: true
       })
-    : new transports.File({ filename: LOG_PATH }),
+    : new transports.File({ filename: LOG_PATH })
 ];
 
 const logger = createLogger({
@@ -42,7 +42,7 @@ const logger = createLogger({
   ),
   transports: logger_transports_fallbacks,
   // capture exceptions, also for datadog to report it
-  exceptionHandlers: logger_transports_fallbacks,
+  exceptionHandlers: logger_transports_fallbacks
 });
 
 export { logger };

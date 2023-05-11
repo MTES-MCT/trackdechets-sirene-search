@@ -12,12 +12,12 @@ export const standardMapping = {
           match: "^date.*$",
           mapping: {
             type: "date",
-            ignore_malformed: true,
-          },
-        },
-      },
-    ],
-  },
+            ignore_malformed: true
+          }
+        }
+      }
+    ]
+  }
 };
 
 export const INDEX_ALIAS_NAME_SEPARATOR = "-";
@@ -73,13 +73,13 @@ export const sireneIndexConfig: IndexProcessConfig = {
     "nomenclatureActivitePrincipaleUniteLegale",
     "nicSiegeUniteLegale",
     "economieSocialeSolidaireUniteLegale",
-    "caractereEmployeurUniteLegale",
+    "caractereEmployeurUniteLegale"
   ],
   settings: {
     // Ignore malformed errors globally
     // Docs https://www.elastic.co/guide/en/elasticsearch/reference/7.17/ignore-malformed.html#ignore-malformed-setting
-    "index.mapping.ignore_malformed": true,
-  },
+    "index.mapping.ignore_malformed": true
+  }
 };
 
 const multiGet = (
@@ -89,8 +89,8 @@ const multiGet = (
   client.mget({
     index: sireneIndexConfig.alias,
     body: {
-      ids: body.map((doc) => doc[1].siren),
-    },
+      ids: body.map(doc => doc[1].siren)
+    }
   });
 
 /**
@@ -113,8 +113,8 @@ const siretWithUniteLegaleFormatter = async (
     body[i][0],
     {
       ...body[i][1],
-      ...sirenDoc._source,
-    },
+      ...sirenDoc._source
+    }
   ]);
 };
 
@@ -141,7 +141,7 @@ export const siretIndexConfig: IndexProcessConfig = {
   // append StockUniteLegale by JOINING ON siren
   dataFormatterFn: siretWithUniteLegaleFormatter,
   dataFormatterExtras: {
-    sireneIndexConfig,
+    sireneIndexConfig
   },
   // copy_to full-text search field to optimize multiple field search performance
   // docs https://www.elastic.co/guide/en/elasticsearch/reference/7.16/copy-to.html
@@ -153,61 +153,61 @@ export const siretIndexConfig: IndexProcessConfig = {
       properties: {
         siren: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         siret: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         denominationUniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         nomUniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         denominationUsuelleEtablissement: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         denominationUsuelle1UniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         denominationUsuelle2UniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         denominationUsuelle3UniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         nomUsageUniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         sigleUniteLegale: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         enseigne1Etablissement: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         enseigne2Etablissement: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         enseigne3Etablissement: {
           type: "text",
-          copy_to: "td_search_companies",
+          copy_to: "td_search_companies"
         },
         td_search_companies: {
-          type: "text",
-        },
-      },
-    },
+          type: "text"
+        }
+      }
+    }
   },
   headers: [
     "siren",
@@ -257,7 +257,7 @@ export const siretIndexConfig: IndexProcessConfig = {
     "denominationUsuelleEtablissement",
     "activitePrincipaleEtablissement",
     "nomenclatureActivitePrincipaleEtablissement",
-    "caractereEmployeurEtablissement",
+    "caractereEmployeurEtablissement"
   ],
   settings: {
     "index.mapping.ignore_malformed": true,

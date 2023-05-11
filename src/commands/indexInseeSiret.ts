@@ -5,7 +5,7 @@ import { logger } from "..";
 import { siretUrl, siretIndexConfig } from "../indexation/indexInsee.helpers";
 import {
   unzipAndIndex,
-  downloadAndIndex,
+  downloadAndIndex
 } from "../indexation/elasticSearch.helpers";
 
 process.on("exit", function () {

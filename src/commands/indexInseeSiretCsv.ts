@@ -18,7 +18,7 @@ process.on("exit", function () {
         "Ce script permet de mettre à jour l'indexation d'un CSV donné dans stocketablissement.",
         "",
         "Il accepte un argument: le chemin du fichier CSV existant sur le disque.",
-        `Erreur avec le chemin de fichier suivant: "${csvPath}".`,
+        `Erreur avec le chemin de fichier suivant: "${csvPath}".`
       ].join("\n")
     );
     return;
@@ -26,6 +26,11 @@ process.on("exit", function () {
   logger.info(
     `Démarrage de l'indexation du fichier "${csvPath}" vers ${siretIndexConfig.alias}`
   );
-  await streamReadAndIndex(csvPath, siretIndexConfig.alias, siretIndexConfig);
+  await streamReadAndIndex(
+    csvPath,
+    siretIndexConfig.alias,
+    siretIndexConfig,
+    false
+  );
   logger.info("Command index:siret:csv finished");
 })();

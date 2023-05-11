@@ -4,7 +4,7 @@ import path from "path";
 
 import {
   siretIndexConfig,
-  sireneIndexConfig,
+  sireneIndexConfig
 } from "../../indexation/indexInsee.helpers";
 import { unzipAndIndex } from "../../indexation/elasticSearch.helpers";
 import { elasticSearchClient } from "../../common/elastic";
@@ -45,12 +45,12 @@ describe("Perform indexation", () => {
       index: sireneIndexConfig.alias,
       body: {
         query: {
-          match_all: {},
-        },
-      },
+          match_all: {}
+        }
+      }
     };
 
-    await elasticSearchClient.search(searchRequest).then((r) => {
+    await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {
         throw new Error(`Server timed out`);
       }
@@ -73,12 +73,12 @@ describe("Perform indexation", () => {
       index: siretIndexConfig.alias,
       body: {
         query: {
-          match_all: {},
-        },
-      },
+          match_all: {}
+        }
+      }
     };
 
-    await elasticSearchClient.search(searchRequest).then((r) => {
+    await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {
         throw new Error(`Server timed out`);
       }
@@ -169,8 +169,8 @@ describe("Perform indexation", () => {
               nomenclatureActivitePrincipaleUniteLegale: "NAP",
               nicSiegeUniteLegale: "00010",
               economieSocialeSolidaireUniteLegale: "",
-              caractereEmployeurUniteLegale: "N",
-            },
+              caractereEmployeurUniteLegale: "N"
+            }
           })
         )
       );

@@ -5,7 +5,7 @@ if (
   process.env.DD_TRACE_ENABLED !== "false"
 ) {
   tracer.init({
-    logInjection: true,
+    logInjection: true
   }); // initialisé dans un fichier différent pour empêcher l'accès aux variables avant leur définition.
 }
 
