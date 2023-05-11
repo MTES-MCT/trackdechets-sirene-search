@@ -7,7 +7,7 @@ import util from "util";
 import {
   BulkOperationContainer,
   BulkOperationType,
-  BulkResponse,
+  BulkResponse
 } from "@elastic/elasticsearch/api/types";
 import { ApiResponse } from "@elastic/elasticsearch";
 import { parse } from "fast-csv";
@@ -17,7 +17,7 @@ import {
   ElasticBulkIndexError,
   ElasticBulkNonFlatPayload,
   ElasticBulkNonFlatPayloadWithNull,
-  IndexProcessConfig,
+  IndexProcessConfig
 } from "./types";
 import { INDEX_ALIAS_NAME_SEPARATOR } from "./indexInsee.helpers";
 
@@ -49,38 +49,56 @@ export const createIndexRelease = async (
     index: indexName,
     body: {
       ...(mappings && { mappings }),
-      ...(settings && { settings }),
+      ...{
+        settings: {
+          // optimize for speed https://www.elastic.co/guide/en/elasticsearch/reference/6.8/tune-for-indexing-speed.html
+          refresh_interval: -1,
+          number_of_replicas: 0
+        }
+      },
+      ...(settings && { settings })
     },
-    include_type_name: true, // Compatibility for v7+ with _doc types
+    include_type_name: true // Compatibility for v7+ with _doc types
   });
   logger.info(`Created a new index ${indexName}`);
   return indexName;
 };
 
 /**
- * Clean older indexes and attach the newest one to the alias
+ * Clean older indexes and point the production alias on the new index
+ * Setup final settings
  */
-export const cleanOldIndexes = async (
+export const finalizeNewIndexRelease = async (
   indexAlias: string,
   indexName: string
 ) => {
   const aliases = await client.cat.aliases({
     name: indexAlias,
-    format: "json",
+    format: "json"
   });
   const bindedIndexes = aliases.body.map((info: { index: any }) => info.index);
+  logger.info(`Setting up final parameters for the index alias ${indexAlias}.`);
+  await client.indices.putSettings({
+    index: indexName,
+    body: {
+      index: {
+        number_of_replicas: process.env.TD_SIRENE_INDEX_NB_REPLICAS || "3",
+        refresh_interval: process.env.TD_SIRENE_INDEX_REFRESH_INTERVAL || "1s"
+      }
+    }
+  });
   logger.info(
     `Pointing the index alias ${indexAlias} to the index ${indexName}.`
   );
-  client.indices.updateAliases({
+  await client.indices.updateAliases({
     body: {
       actions: [
         ...(bindedIndexes.length
           ? [{ remove: { indices: bindedIndexes, alias: indexAlias } }]
           : []),
-        { add: { index: indexName, alias: indexAlias } },
-      ],
-    },
+        { add: { index: indexName, alias: indexAlias } }
+      ]
+    }
   });
   if (bindedIndexes.length) {
     logger.info(
@@ -90,7 +108,7 @@ export const cleanOldIndexes = async (
   // Delete old indices to save disk space, except the last
   const indices = await client.cat.indices({
     index: `${indexAlias}${INDEX_ALIAS_NAME_SEPARATOR}${pjson.version}${INDEX_ALIAS_NAME_SEPARATOR}*`,
-    format: "json",
+    format: "json"
   });
   const oldIndices: string[] = indices.body
     .map((info: { index: string }) => info.index)
@@ -119,21 +137,23 @@ export const bulkIndex = async (
   /**
    * Chunk and loop on bulkIndex
    */
-  const request = async (bodyChunk: ElasticBulkNonFlatPayload) => {
+  const request = async (
+    bodyChunk: ElasticBulkNonFlatPayload
+  ): Promise<void> => {
     /**
      * Calls client.bulk
      */
     const requestBulkIndex = async (body: BulkOperationContainer[]) => {
       if (!body || !body.length) {
         // nothing to index
-        return Promise.resolve(null);
+        return Promise.resolve();
       }
 
       try {
         const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
           body,
           // lighten the response
-          _source_excludes: ["items.index._*", "took"],
+          _source_excludes: ["items.index._*", "took"]
         });
         // Log error data and continue
         if (bulkResponse) {
@@ -193,7 +213,7 @@ export const bulkIndex = async (
                   id: body[k * 2].index?._id as string,
                   body: body[k * 2 + 1],
                   type: "_doc",
-                  refresh: false,
+                  refresh: false
                 });
               } catch (err) {
                 logger.error(
@@ -208,10 +228,10 @@ export const bulkIndex = async (
             const elasticBulkIndexError: ElasticBulkIndexError = {
               status: action[opType]?.status ?? 0,
               error: action[opType]?.error,
-              body: body[k * 2 + 1],
+              body: body[k * 2 + 1]
             };
             logger.error(`Error in bulkIndex operation`, {
-              elasticBulkIndexError,
+              elasticBulkIndexError
             });
           }
         }
@@ -219,18 +239,36 @@ export const bulkIndex = async (
     }
   };
 
-  // immediat return the chunk larger than the data streamed
+  // immediat return the chunk when larger than the data streamed
   if (CHUNK_SIZE > body.length) {
     await request(body);
     return;
   }
 
+  const promises: Promise<void>[] = [];
+  // number if chunk requests in-flight
+  let numberOfChunkRequests = 0;
+  // Default concurrent requests is 2
+  const maxConcurrentRequests = isNaN(
+    parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "2", 10)
+  )
+    ? 2
+    : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "2", 10);
   // loop over other chunks
   for (let i = 0; i < body.length; i += CHUNK_SIZE) {
     const end = i + CHUNK_SIZE;
     const slice = body.slice(i, end);
-    await request(slice);
+    const promise = request(slice);
+    promises.push(promise);
+    numberOfChunkRequests++; // Increment the in-flight counter
+
+    // Check if the maximum number of promises is reached
+    if (numberOfChunkRequests >= maxConcurrentRequests) {
+      await Promise.race(promises); // Wait for any one of the promises to resolve
+      numberOfChunkRequests--; // Decrement the in-flight counter
+    }
   }
+  await Promise.all(promises);
 };
 
 /**
@@ -268,23 +306,23 @@ export const getWritableParserAndIndexer = (
                   _id: doc[indexConfig.idKey],
                   _index: indexName,
                   // Next major ES version won't need _type anymore
-                  _type: "_doc",
-                },
+                  _type: "_doc"
+                }
               },
-              doc,
+              doc
             ];
           }
         }
       );
 
       bulkIndex(
-        body.filter((line) => line !== null) as ElasticBulkNonFlatPayload,
+        body.filter(line => line !== null) as ElasticBulkNonFlatPayload,
         indexConfig,
         indexName
       )
         .then(() => next())
-        .catch((err) => next(err));
-    },
+        .catch(err => next(err));
+    }
   });
 
 /**
@@ -293,7 +331,8 @@ export const getWritableParserAndIndexer = (
 export const streamReadAndIndex = async (
   csvPath: string,
   indexName: string,
-  indexConfig: IndexProcessConfig
+  indexConfig: IndexProcessConfig,
+  isReleaseIndexation = true
 ): Promise<string> => {
   const headers = indexConfig.headers;
   const writableStream = getWritableParserAndIndexer(indexConfig, indexName);
@@ -305,9 +344,9 @@ export const streamReadAndIndex = async (
       headers,
       ignoreEmpty: true,
       discardUnmappedColumns: true,
-      ...(maxRows && { maxRows }),
+      ...(maxRows && { maxRows })
     })
-      .on("error", (error) => {
+      .on("error", error => {
         throw error;
       })
       .on("end", async (rowCount: number) => {
@@ -316,7 +355,8 @@ export const streamReadAndIndex = async (
     writableStream
   );
   // roll-over index alias
-  await cleanOldIndexes(indexConfig.alias, indexName);
+  if (isReleaseIndexation)
+    await finalizeNewIndexRelease(indexConfig.alias, indexName);
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
 };
@@ -353,7 +393,7 @@ export const downloadAndIndex = async (
   const zipPath = path.join(destination, indexConfig.zipFileName);
   return new Promise((resolve, reject) => {
     https
-      .get(url, (res) => {
+      .get(url, res => {
         const contentLength = parseInt(
           res.headers["content-length"] as string,
           10
@@ -374,7 +414,7 @@ export const downloadAndIndex = async (
         let currentLength = 0;
         const file = fs.createWriteStream(zipPath);
         // monitor progress
-        res.on("data", (chunk) => {
+        res.on("data", chunk => {
           currentLength += Buffer.byteLength(chunk);
         });
         // stream into the file
@@ -398,7 +438,7 @@ export const downloadAndIndex = async (
           }
         });
       })
-      .on("error", (err) => {
+      .on("error", err => {
         logger.info("HTTP download Error: ", err.message);
         reject(err.message);
       });

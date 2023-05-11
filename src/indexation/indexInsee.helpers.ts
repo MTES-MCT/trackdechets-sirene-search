@@ -260,7 +260,6 @@ export const siretIndexConfig: IndexProcessConfig = {
     "caractereEmployeurEtablissement"
   ],
   settings: {
-    "index.mapping.ignore_malformed": true,
-    "index.number_of_replicas": process.env.TD_SIRENE_INDEX_NB_REPLICAS || "3",
-  },
+    "index.mapping.ignore_malformed": true
+  }
 };
