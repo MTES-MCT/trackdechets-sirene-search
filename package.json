@@ -9,10 +9,14 @@
     "watch": "tsc -w",
     "start": "npm run build",
     "index": "npm run index:sirene && npm run index:siret",
-    "index:dev": "export NODE_ENV=dev && docker-compose up -d elasticsearch && npm run build && npm run index:sirene && npm run index:siret",
+    "preindex:dev": "export NODE_ENV=dev && docker-compose up -d elasticsearch && npm run build && npm run index:sirene && npm run index:siret",
+    "index:dev": "npm run index:sirene:dev && npm run index:siret:dev",
     "index:sirene": "node dist/src/commands/indexInseeSirene.js",
+    "index:sirene:dev": "tsx src/commands/indexInseeSirene.ts",
     "index:siret": "node dist/src/commands/indexInseeSiret.js",
+    "index:siret:dev": "tsx src/commands/indexInseeSiret.ts",
     "index:siret:csv": "node dist/src/commands/indexInseeSiretCsv.js",
+    "index:siret:csv:dev": "tsx src/commands/indexInseeSiretCsv.ts",
     "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9201 (ensure that docker-compose up has been executed)' && wait-on tcp:9201 -t 60000 -l",
     "test": "jest --detectOpenHandles",
     "lint": "eslint -c .eslintrc.js --ext .ts ./src"
@@ -51,6 +55,7 @@
     "jest": "^29.5.0",
     "prettier": "^2.8.8",
     "ts-jest": "^29.1.0",
+    "tsx": "^3.12.7",
     "typescript": "^5.0.4",
     "wait-on": "^7.0.1"
   },
