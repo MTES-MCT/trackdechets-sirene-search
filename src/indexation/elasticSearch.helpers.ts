@@ -370,7 +370,8 @@ export const streamReadAndIndex = async (
   return csvPath;
 };
 
-const getCsvPath = (destination: string, indexConfig: IndexProcessConfig) => path.join(destination, indexConfig.csvFileName);
+const getCsvPath = (destination: string, indexConfig: IndexProcessConfig) =>
+  path.join(destination, indexConfig.csvFileName);
 
 /**
  * Streaming unzip, formatting documents and index them
