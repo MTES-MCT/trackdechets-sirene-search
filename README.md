@@ -48,3 +48,24 @@ Puis de relancer chaque script
 
 
 Voir le mapping configuré dans `search/src/indexation/indexInsee.helpers.ts`
+
+## Variables d'environnement
+
+- `TD_SIRENE_INDEX_NB_REPLICAS`: à la fin de la création d'un index, le nombre de replicas ES de l'index créé
+- `TD_SIRENE_INDEX_REFRESH_INTERVAL`: à la fin de la création d'un index, l'interval de temps entre deux cycles de rafraichissement (ex."1s")
+- `INDEX_CHUNK_SIZE`: le nombre de lignes du CSV à indexer à la fois dans une requête `bulkIndex` ES
+- `TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS`: le nombre de chunks à indexer à la fois dans de multiples requêtes `bulkIndex` ES en parallèle
+- `INSEE_DOWNLOAD_DIRECTORY`: remplace le répertoire temporaire par défaut pour télécharger le fichier de l'INSEE
+- `NODE_ENV`: Nom de l'environnement, qu sera utilisé pour nommer l'index
+- `DD_ENV`: Datadog tracer
+- `ELASTICSEARCH_URL`: l'URL du serveur
+- `FORCE_LOGGER_CONSOLE`: forcer 
+- `MAX_ROWS`: pour tester une indexation partielle, s'arrête après ce nombre de lignes.
+- `INSEE_SIRENE_URL`: utiliser une autre URL pour télécharger le ZIP de la base Sirene "stock unité légale"
+- `INSEE_SIRET_URL`: utiliser une autre URL pour télécharger le ZIP de la base Sirene "stock établissements"
+- `INSEE_SIRET_ZIP_PATH`: chemin direct au fichier ZIP de la base Sirene "stock établissements"
+- `INSEE_SIRENE_ZIP_PATH`: chemin direct au fichier ZIP de la base Sirene "stock unité légale"
+- `LOG_PATH`: remplace le chemin par défaut des logs ()"logs/trackdechets-search.log")
+- `LOG_TO_HTTP`: remplace le logging vers fichier pour un envoie direct par requête HTTP au collecteur "http-intake.logs.datadoghq.com"
+- `INDEX_ALIAS_NAME_SUFFIX`: ajouter un suffixe custom
+ au nom de l'index créé
