@@ -251,10 +251,10 @@ export const bulkIndexByChunks = async (
   let numberOfChunkRequests = 0;
   // Default concurrent requests is 2
   const maxConcurrentRequests = isNaN(
-    parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "2", 10)
+    parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10)
   )
     ? 2
-    : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "2", 10);
+    : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10);
 
   // loop over other chunks
   for (let i = 0; i < body.length; i += CHUNK_SIZE) {
