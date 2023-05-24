@@ -5,6 +5,12 @@ on: pull_request
 jobs:
   search:
     runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+          image: elasticsearch:7.17.0
+          ports:
+          - 9200/tcp
+          options: -e="discovery.type=single-node" --health-cmd="curl http://localhost:9200/_cluster/health" --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node
@@ -25,5 +31,13 @@ jobs:
         run: npm run lint
       - name: Run typecheck
         run: npm run types
+      - name: Verify Elasticsearch connection from host
+        env:
+          ELASTICSEARCH_URL: http://localhost:${{ job.services.elasticsearch.ports[9200] }}
+        run: |
+          echo $ELASTICSEARCH_URL
+          curl -fsSL "$ELASTICSEARCH_URL/_cat/health?h=status"
       - name: Run tests
+        env:
+          ELASTICSEARCH_URL: http://localhost:${{ job.services.elasticsearch.ports[9200] }}
         run: npm test -- --forceExit

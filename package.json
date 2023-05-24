@@ -18,7 +18,7 @@
     "index:siret:dev": "tsx src/commands/indexInseeSiret.ts",
     "index:siret:csv": "node dist/src/commands/indexInseeSiretCsv.js",
     "index:siret:csv:dev": "tsx src/commands/indexInseeSiretCsv.ts",
-    "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9201 (ensure that docker-compose up has been executed)' && wait-on tcp:9201 -t 60000 -l",
+    "pretest": "echo 'Wait for Elasticsearch to be available on http://localhost:9200' && wait-on tcp:9200 -t 60000 -l",
     "test": "jest --detectOpenHandles",
     "lint": "eslint -c .eslintrc.js --ext .ts ./src"
   },
