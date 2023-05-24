@@ -15,11 +15,23 @@ const LOG_TO_CONSOLE =
 const LOG_TO_HTTP =
   process.env.LOG_TO_HTTP && process.env.JEST_WORKER_ID === undefined;
 
+const logFormat = format.combine(
+  format.label({ label: "trackdechets-sirene-search" }),
+  format.timestamp({
+    format: "HH-MM:ss YYYY-MM-DD"
+  }),
+  format.prettyPrint(),
+  format.colorize(),
+  format.align(),
+  format.printf(info => {
+    return `[${info.timestamp}] [${info.label}]@[${info.level}]: ${info.message}`;
+  })
+);
+
 const logger_transports_fallbacks = [
   LOG_TO_CONSOLE
     ? new transports.Console({
-        // Simple `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-        format: format.simple()
+        format: logFormat
       })
     : LOG_TO_HTTP
     ? new transports.Http({
