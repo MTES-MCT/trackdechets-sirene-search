@@ -82,19 +82,9 @@ export const sireneIndexConfig: IndexProcessConfig = {
   }
 };
 
-const multiGet = (
-  body: ElasticBulkNonFlatPayload,
-  sireneIndexConfig: IndexProcessConfig
-) =>
-  client.mget({
-    index: sireneIndexConfig.alias,
-    body: {
-      ids: body.map(doc => doc[1].siren)
-    }
-  });
-
 /**
- * Append SIREN data to SIRET data
+ * Formatter for siretIndexConfig
+ * Appends SIREN data to SIRET data
  */
 const siretWithUniteLegaleFormatter = async (
   body: ElasticBulkNonFlatPayload,
@@ -103,7 +93,12 @@ const siretWithUniteLegaleFormatter = async (
   if (!body.length) {
     return [];
   }
-  const response = await multiGet(body, extras.sireneIndexConfig);
+  const response = await client.mget({
+    index: sireneIndexConfig.alias,
+    body: {
+      ids: body.map(doc => doc[1].siren)
+    }
+  });
   if (!response.body.docs.length) {
     logger.error(
       `Empty SIRENE data returned from ${extras.sireneIndexConfig.alias}, final data may be corrupted`
