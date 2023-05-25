@@ -180,9 +180,9 @@ const logBulkErrorsAndRetry = async (
 };
 
 /**
- * bulkIndex
+ * bulkIndex request
  */
-const request = async (
+export const request = async (
   indexName: string,
   indexConfig: IndexProcessConfig,
   bodyChunk: ElasticBulkNonFlatPayload
@@ -287,8 +287,9 @@ export const getWritableParserAndIndexer = (
   indexName: string
 ) =>
   new Writable({
-    // seems a reasonable data size to go with CHUNK_SIZE = 10000
-    highWaterMark: 100_000,
+    // Increase memory usage but better performance
+    // 128 KiB (128*1024=131_072)
+    highWaterMark: 131_072,
     objectMode: true,
     writev: (csvLines, next) => {
       const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(
