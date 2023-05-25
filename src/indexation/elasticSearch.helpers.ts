@@ -1,7 +1,4 @@
 import fs from "fs";
-import { rm } from "fs/promises";
-import https from "https";
-import path from "path";
 import stream, { Writable } from "stream";
 import util from "util";
 import {
@@ -11,7 +8,6 @@ import {
 } from "@elastic/elasticsearch/api/types";
 import { ApiResponse } from "@elastic/elasticsearch";
 import { parse } from "fast-csv";
-import StreamZip from "node-stream-zip";
 import { logger, elasticSearchClient as client } from "..";
 import {
   ElasticBulkIndexError,
@@ -31,7 +27,7 @@ const CHUNK_SIZE: number =
 /**
  * Common index name formatter
  */
-export const getIndexVersionName = (indexConfig: IndexProcessConfig) =>
+const getIndexVersionName = (indexConfig: IndexProcessConfig) =>
   `${indexConfig.alias}${INDEX_ALIAS_NAME_SEPARATOR}${
     pjson.version
   }${INDEX_ALIAS_NAME_SEPARATOR}${Date.now()}`;
@@ -68,7 +64,7 @@ export const createIndexRelease = async (
  * Clean older indexes and point the production alias on the new index
  * Setup final settings
  */
-export const finalizeNewIndexRelease = async (
+const finalizeNewIndexRelease = async (
   indexAlias: string,
   indexName: string
 ) => {
@@ -182,7 +178,7 @@ const logBulkErrorsAndRetry = async (
 /**
  * bulkIndex request
  */
-export const request = async (
+const request = async (
   indexName: string,
   indexConfig: IndexProcessConfig,
   bodyChunk: ElasticBulkNonFlatPayload
@@ -239,8 +235,8 @@ export const bulkIndexByChunks = async (
   body: ElasticBulkNonFlatPayload,
   indexConfig: IndexProcessConfig,
   indexName: string
-) => {
-  // immediat return the chunk when larger than the data streamed
+): Promise<void> => {
+  // immediat return the chunk when size is greater than the data streamed
   if (CHUNK_SIZE > body.length) {
     await request(indexName, indexConfig, body);
     return;
@@ -282,7 +278,7 @@ export const bulkIndexByChunks = async (
 /**
  * Writable stream that parses CSV to an ES bulk body
  */
-export const getWritableParserAndIndexer = (
+const getWritableParserAndIndexer = (
   indexConfig: IndexProcessConfig,
   indexName: string
 ) =>
@@ -369,93 +365,4 @@ export const streamReadAndIndex = async (
   }
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
-};
-
-const getCsvPath = (destination: string, indexConfig: IndexProcessConfig) =>
-  path.join(destination, indexConfig.csvFileName);
-
-/**
- * Streaming unzip, formatting documents and index them
- */
-export const unzipAndIndex = async (
-  zipPath: string,
-  destination: string,
-  indexConfig: IndexProcessConfig
-): Promise<string> => {
-  const indexName = await createIndexRelease(indexConfig);
-  const zip = new StreamZip.async({ file: zipPath });
-  const csvPath = getCsvPath(destination, indexConfig);
-  await zip.extract(indexConfig.csvFileName, csvPath);
-  await zip.close();
-  await streamReadAndIndex(csvPath, indexName, indexConfig);
-  return indexName;
-};
-
-/**
- * Download and launch indexation
- */
-export const downloadAndIndex = async (
-  url: string,
-  indexConfig: IndexProcessConfig
-): Promise<string> => {
-  // path ../../csv* is in .gitignore or override with INSEE_DOWNLOAD_DIRECTORY
-  const destination = fs.mkdtempSync(
-    process.env.INSEE_DOWNLOAD_DIRECTORY ||
-      path.join(__dirname, "..", "..", "csv")
-  );
-
-  const zipPath = path.join(destination, indexConfig.zipFileName);
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, res => {
-        const contentLength = parseInt(
-          res.headers["content-length"] as string,
-          10
-        );
-        logger.info(
-          `Start downloading the INSEE archive of ${
-            contentLength / 1000000
-          } MB from ${url} to ${zipPath}`
-        );
-        const interval = setInterval(
-          () =>
-            logger.info(
-              `Downloading the INSEE archive : ${currentLength / 1000000} MB`
-            ),
-          5000
-        );
-        // Bytes progess var
-        let currentLength = 0;
-        const file = fs.createWriteStream(zipPath);
-        // monitor progress
-        res.on("data", chunk => {
-          currentLength += Buffer.byteLength(chunk);
-        });
-        // stream into the file
-        res.pipe(file);
-        // Close the file
-        file.on("finish", async () => {
-          clearInterval(interval);
-          file.close();
-          logger.info(`Finished downloading the INSEE archive to ${zipPath}`);
-          try {
-            const csvPath = getCsvPath(destination, indexConfig);
-            const indexName = await unzipAndIndex(
-              zipPath,
-              destination,
-              indexConfig
-            );
-            await rm(zipPath, { force: true });
-            await rm(csvPath, { force: true });
-            resolve(indexName);
-          } catch (e: any) {
-            reject(e.message);
-          }
-        });
-      })
-      .on("error", err => {
-        logger.info("HTTP download Error: ", err.message);
-        reject(err.message);
-      });
-  });
 };

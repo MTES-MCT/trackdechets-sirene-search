@@ -1,3 +1,4 @@
+import path from "path";
 import { elasticSearchClient as client, logger } from "..";
 import { ElasticBulkNonFlatPayload, IndexProcessConfig } from "./types";
 
@@ -258,3 +259,11 @@ export const siretIndexConfig: IndexProcessConfig = {
     "index.mapping.ignore_malformed": true
   }
 };
+
+/**
+ * Build the CSV file path
+ */
+export const getCsvPath = (
+  destination: string,
+  indexConfig: IndexProcessConfig
+) => path.join(destination, indexConfig.csvFileName);

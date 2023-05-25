@@ -3,10 +3,8 @@ import path from "path";
 import fs from "fs";
 import { logger } from "..";
 import { siretUrl, siretIndexConfig } from "../indexation/indexInsee.helpers";
-import {
-  unzipAndIndex,
-  downloadAndIndex
-} from "../indexation/elasticSearch.helpers";
+import { unzipAndIndex } from "../indexation/unzipAndIndex";
+import { downloadAndIndex } from "../indexation/downloadAndIndex";
 
 process.on("exit", function () {
   console.log("Command index:siret finished");

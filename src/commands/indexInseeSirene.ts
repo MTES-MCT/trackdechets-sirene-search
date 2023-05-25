@@ -2,10 +2,8 @@ import "../common/tracer"; // tracer.init() doit précéder l'importation des mo
 import path from "path";
 import fs from "fs";
 import { logger } from "../common/logger";
-import {
-  downloadAndIndex,
-  unzipAndIndex
-} from "../indexation/elasticSearch.helpers";
+import { unzipAndIndex } from "../indexation/unzipAndIndex";
+import { downloadAndIndex } from "../indexation/downloadAndIndex";
 
 import { sireneIndexConfig } from "../indexation/indexInsee.helpers";
 

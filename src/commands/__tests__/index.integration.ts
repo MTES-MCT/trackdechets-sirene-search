@@ -6,7 +6,7 @@ import {
   siretIndexConfig,
   sireneIndexConfig
 } from "../../indexation/indexInsee.helpers";
-import { unzipAndIndex } from "../../indexation/elasticSearch.helpers";
+import { unzipAndIndex } from "../../indexation/unzipAndIndex";
 import { elasticSearchClient } from "../../common/elastic";
 
 const csvTmp = path.join(
