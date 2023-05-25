@@ -1,6 +1,6 @@
 {
   "name": "trackdechets-sirene-search",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Indexation of french companies from INSEE's database",
   "main": "src/index.ts",
   "scripts": {
