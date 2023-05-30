@@ -354,6 +354,8 @@ export const streamReadAndIndex = async (
       .transform((data, callback) => {
         if (!!indexConfig.transformCsv) {
           indexConfig.transformCsv(data, callback);
+        } else {
+          callback(null, data);
         }
       })
       .on("error", error => {
