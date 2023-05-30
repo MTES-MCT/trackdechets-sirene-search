@@ -6,10 +6,24 @@ Objectif : contruire un moteur de recherche d'établissements français et par l
 
 ## Installation
 
-- Le serveur doit disposer de [node version 14](https://nodejs.org/en/download/), de l'agent [Datadog](https://docs.datadoghq.com/fr/getting_started/agent/)
-- Exécutez `npm run build`
+- Clonez le dépôt : `git clone https://github.com/MTES-MCT/trackdechets-sirene-search`
+- Installez les dépendances : `npm install && npm run build`
+- Copiez et corrigez `.env/model` vers `.env` (voir ci-dessous la documentation des variables)
+- 
+
+## Déploiment
+
+- Ce dépôt dispose d'un `Procfile` réutilisable sur les platformes "Paas" le supportant.
+- Si vous déployez manuellement, votre serveur doit disposer de [node.js version 18](https://nodejs.org/en/download/), et pour le logging de l'agent [Datadog](https://docs.datadoghq.com/fr/getting_started/agent/)
+- Installez le package en suivant les informations d'installation ci dessus.
 - Pour accéder à ElasticSearch sur Scalingo, télécharger le certificat depuis le dashbord Scalingo
 - Le placer sous le nom `es.cert` dans `search/dist/common` pour que le client node elasticsearch le prenne en compte
+
+## Tests
+
+- En local, lancez les serveur Elastic avec `docker-compose up`
+- En local, conifgurez la variable d'environnement `export ELASTICSEARCH_URL=http://localhost:9201`
+- Lancez `npm run test`
 
 ## Usage
 
