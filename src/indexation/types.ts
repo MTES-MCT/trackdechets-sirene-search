@@ -2,7 +2,7 @@
  * Indexing process configuration
  */
 export interface IndexProcessConfig {
-  headers: string[];
+  headers: string[] | boolean;
   alias: string;
   csvFileName: string;
   idKey: string;
@@ -14,6 +14,7 @@ export interface IndexProcessConfig {
   dataFormatterExtras?: any;
   mappings?: Record<string, any>;
   settings?: Record<string, any>;
+  transformCsv?: (data, callback) => void;
 }
 
 /**

@@ -24,8 +24,19 @@ process.on("exit", function () {
     return;
   }
   logger.info(
-    `Démarrage de l'indexation du fichier "${csvPath}" vers ${siretIndexConfig.alias}`
+    `Démarrage de l'indexation du fichier "${csvPath}" vers l'alias existant ${siretIndexConfig.alias}`
   );
+
+  // les headers du StockEtablissement ne correspondent pas au fichier CSV téléchargé de l'api Sirene Insee
+  // on utilisera donc les headers du fichier CSV directement
+  siretIndexConfig.headers = true;
+  // le fichier CSV téléchargé de l'api Sirene Insse contient une première colonne sans header, servant à numéroter les résultats
+  siretIndexConfig.transformCsv = (data, callback) => {
+    // Here, replace 'column1' with the actual name of your first column
+    const { "": firstColumn, ...rest } = data;
+    callback(null, rest);
+  };
+
   await streamReadAndIndex(
     csvPath,
     siretIndexConfig.alias,

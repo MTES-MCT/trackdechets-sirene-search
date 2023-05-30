@@ -283,7 +283,7 @@ const getWritableParserAndIndexer = (
   indexName: string
 ) =>
   new Writable({
-    // Increase memory usage but better performance
+    // Increase memory usage for better performance
     // 128 KiB (128*1024=131_072)
     highWaterMark: 131_072,
     objectMode: true,
@@ -341,7 +341,7 @@ export const streamReadAndIndex = async (
 ): Promise<string> => {
   const headers = indexConfig.headers;
   const writableStream = getWritableParserAndIndexer(indexConfig, indexName);
-  // stop after MAX_ROWS
+  // stop parsing CSV after MAX_ROWS
   const maxRows = parseInt(process.env.MAX_ROWS as string, 10);
   await pipeline(
     fs.createReadStream(csvPath),
@@ -351,6 +351,11 @@ export const streamReadAndIndex = async (
       discardUnmappedColumns: true,
       ...(maxRows && { maxRows })
     })
+      .transform((data, callback) => {
+        if (!!indexConfig.transformCsv) {
+          indexConfig.transformCsv(data, callback);
+        }
+      })
       .on("error", error => {
         throw error;
       })
