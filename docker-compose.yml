@@ -40,7 +40,6 @@ services:
       - discovery.seed_hosts=es01
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms${JVM_RAM:-512m} -Xmx${JVM_RAM:-512m}"
-      - xpack.security.enabled=false
     volumes:
       - esdata02:/usr/share/elasticsearch/data
     ulimits:
