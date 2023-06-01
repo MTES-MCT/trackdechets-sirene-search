@@ -3,10 +3,9 @@ import stream, { Writable } from "stream";
 import util from "util";
 import {
   BulkOperationContainer,
-  BulkOperationType,
   BulkResponse
 } from "@elastic/elasticsearch/api/types";
-import { ApiResponse } from "@elastic/elasticsearch";
+import { ApiResponse, errors } from "@elastic/elasticsearch";
 import { parse } from "fast-csv";
 import { logger, elasticSearchClient as client } from "..";
 import {
@@ -16,6 +15,8 @@ import {
   IndexProcessConfig
 } from "./types";
 import { INDEX_ALIAS_NAME_SEPARATOR } from "./indexInsee.helpers";
+
+const { ResponseError } = errors;
 
 const pipeline = util.promisify(stream.pipeline);
 const pjson = require("../../package.json");
@@ -134,7 +135,7 @@ const logBulkErrorsAndRetry = async (
       const action = bulkResponse.items[k]!;
       const operations: string[] = Object.keys(action);
       for (const operation of operations) {
-        const opType = operation as BulkOperationType;
+        const opType = operation;
         if (opType && action[opType]?.error) {
           // If the status is 429 it means that we can retry the document
           if (action[opType]?.status === 429) {
@@ -175,23 +176,26 @@ const logBulkErrorsAndRetry = async (
   }
 };
 
-/**
- * bulkIndex request
- */
-const request = async (
-  indexName: string,
-  indexConfig: IndexProcessConfig,
-  bodyChunk: ElasticBulkNonFlatPayload
-): Promise<void> => {
-  /**
-   * Calls client.bulk
-   */
-  const requestBulkIndex = async (body: BulkOperationContainer[]) => {
-    if (!body || !body.length) {
-      // nothing to index
-      return Promise.resolve();
-    }
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
+/**
+ * Calls client.bulk and retry
+ */
+const requestBulkIndex = async (
+  indexName: string,
+  body: BulkOperationContainer[]
+): Promise<void> => {
+  const maxRetries = 5;
+  let retries = 0;
+  let waitTime = 1000; // Initial wait time in milliseconds
+
+  if (!body || !body.length) {
+    // nothing to index
+    return;
+  }
+  while (retries < maxRetries) {
     try {
       const bulkResponse: ApiResponse<BulkResponse> = await client.bulk({
         body,
@@ -202,15 +206,43 @@ const request = async (
       if (bulkResponse) {
         await logBulkErrorsAndRetry(indexName, bulkResponse.body, body);
       }
-    } catch (bulkIndexError) {
-      // avoid dumping huge errors to the logger
-      logger.error(
-        `Fatal error bulk-indexing to index ${indexName}: ${bulkIndexError}`,
-        bulkIndexError
-      );
       return;
+    } catch (bulkIndexError) {
+      if (
+        bulkIndexError instanceof ResponseError &&
+        bulkIndexError.body.error.root_cause.some(
+          cause => cause.type === "es_rejected_execution_exception"
+        )
+      ) {
+        logger.error(
+          `Retrying bulkIndex operation (retry ${
+            retries + 1
+          }) with exponential backoff`
+        );
+        await sleep(waitTime);
+        // Exponential backoff: double the wait time on each retry
+        waitTime *= 2;
+        retries++;
+      } else {
+        // avoid dumping huge errors to the logger
+        logger.error(
+          `Fatal error on one chunk to index ${indexName}: ${bulkIndexError}`,
+          bulkIndexError
+        );
+        return;
+      }
     }
-  };
+  }
+};
+
+/**
+ * Bulk Index and enrich data if configured for
+ */
+const request = async (
+  indexName: string,
+  indexConfig: IndexProcessConfig,
+  bodyChunk: ElasticBulkNonFlatPayload
+): Promise<void> => {
   if (bodyChunk.length) {
     logger.info(
       `Indexing ${bodyChunk.length} documents in bulk to index ${indexName}`
@@ -222,9 +254,15 @@ const request = async (
       bodyChunk,
       indexConfig.dataFormatterExtras
     );
-    return requestBulkIndex(formattedChunk.flat() as BulkOperationContainer[]);
+    return requestBulkIndex(
+      indexName,
+      formattedChunk.flat() as BulkOperationContainer[]
+    );
   }
-  return requestBulkIndex(bodyChunk.flat() as BulkOperationContainer[]);
+  return requestBulkIndex(
+    indexName,
+    bodyChunk.flat() as BulkOperationContainer[]
+  );
 };
 
 /**
