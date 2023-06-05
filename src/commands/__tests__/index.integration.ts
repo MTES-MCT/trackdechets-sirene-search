@@ -24,9 +24,10 @@ describe("Perform indexation", () => {
   const unzipDestination = fs.mkdtempSync(csvTmp);
   let previousConcurrentRequestEnv;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     delete process.env.INSEE_SIRET_ZIP_PATH;
     delete process.env.INSEE_SIRENE_ZIP_PATH;
+    await resetDatabase();
   });
 
   beforeEach(async () => {
@@ -202,3 +203,7 @@ describe("Perform indexation", () => {
     expect(aliases.body[0].index).toContain(indexName);
   });
 });
+function resetDatabase() {
+  throw new Error("Function not implemented.");
+}
+

@@ -21,10 +21,6 @@ const { ResponseError } = errors;
 const pipeline = util.promisify(stream.pipeline);
 const pjson = require("../../package.json");
 
-// Max size of documents to bulk index, depends on ES JVM memory available
-const CHUNK_SIZE: number =
-  parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
-
 /**
  * Common index name formatter
  */
@@ -274,6 +270,10 @@ export const bulkIndexByChunks = async (
   indexConfig: IndexProcessConfig,
   indexName: string
 ): Promise<void> => {
+  // Max size of documents to bulk index, depends on ES JVM memory available
+  const CHUNK_SIZE: number =
+    parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
+
   // immediat return the chunk when size is greater than the data streamed
   if (CHUNK_SIZE > body.length) {
     await request(indexName, indexConfig, body);
@@ -304,8 +304,6 @@ export const bulkIndexByChunks = async (
         await Promise.race(promises); // Wait for any one of the promises to resolve
         numberOfChunkRequests--; // Decrement the in-flight counter
       }
-    } else {
-      await request(indexName, indexConfig, slice);
     }
   }
   if (promises.length > 0) {
