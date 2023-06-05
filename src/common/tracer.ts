@@ -1,4 +1,4 @@
-import tracer from "dd-trace";
+import { tracer } from "dd-trace";
 
 if (
   process.env.NODE_ENV !== "test" &&

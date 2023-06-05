@@ -1,7 +1,11 @@
 module.exports = {
   settings: {
     "import/resolver": {
-      typescript: {}
+      typescript: {},
+      node: {
+        extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
+        moduleDirectory: ["src", "node_modules"]
+      }
     }
   },
   parser: "@typescript-eslint/parser",
@@ -35,13 +39,13 @@ module.exports = {
     "import/no-extraneous-dependencies": [
       "error",
       {
-        devDependencies: ["src/scripts/**", "**/__tests__/**"]
+        devDependencies: ["**/__tests__/**"]
       }
     ]
   },
   overrides: [
     {
-      files: ["*.integration.ts", "*.test.ts"],
+      files: ["*.ts"],
       rules: {
         "@typescript-eslint/no-var-requires": "off"
       }

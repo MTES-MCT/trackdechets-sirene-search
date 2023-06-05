@@ -1,7 +1,7 @@
 import appRoot from "app-root-path";
 import { createLogger, format, transports } from "winston";
 
-let LOG_PATH =
+const LOG_PATH =
   process.env.LOG_PATH ?? `${appRoot}/logs/trackdechets-search.log`;
 
 /**
@@ -12,14 +12,26 @@ let LOG_PATH =
 const LOG_TO_CONSOLE =
   process.env.FORCE_LOGGER_CONSOLE && process.env.JEST_WORKER_ID === undefined;
 // use http transport when datadog agent installation is impossible (eg. one-off container)
-const LOG_TO_HTTP = process.env.LOG_TO_HTTP && process.env.JEST_WORKER_ID === undefined;
+const LOG_TO_HTTP =
+  process.env.LOG_TO_HTTP && process.env.JEST_WORKER_ID === undefined;
 
+const logFormat = format.combine(
+  format.label({ label: "trackdechets-sirene-search" }),
+  format.timestamp({
+    format: "HH-MM:ss YYYY-MM-DD"
+  }),
+  format.prettyPrint(),
+  format.colorize(),
+  format.align(),
+  format.printf(info => {
+    return `[${info.timestamp}] [${info.label}]@[${info.level}]: ${info.message}`;
+  })
+);
 
 const logger_transports_fallbacks = [
   LOG_TO_CONSOLE
     ? new transports.Console({
-        // Simple `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-        format: format.simple()
+        format: logFormat
       })
     : LOG_TO_HTTP
     ? new transports.Http({
@@ -30,7 +42,7 @@ const logger_transports_fallbacks = [
         ssl: true
       })
     : new transports.File({ filename: LOG_PATH })
-]
+];
 
 const logger = createLogger({
   level: "info",

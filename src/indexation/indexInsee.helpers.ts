@@ -1,10 +1,6 @@
-import { elasticSearchClient as client } from "..";
-import {
-  ElasticBulkNonFlatPayload,
-  IndexProcessConfig
-} from "./types";
-import { logger } from "..";
-
+import path from "path";
+import { elasticSearchClient as client, logger } from "..";
+import { ElasticBulkNonFlatPayload, IndexProcessConfig } from "./types";
 
 // Date dynamic mapping for all field names starting with "date*""
 // like "dateDernierTraitementUniteLegale"
@@ -83,24 +79,13 @@ export const sireneIndexConfig: IndexProcessConfig = {
   settings: {
     // Ignore malformed errors globally
     // Docs https://www.elastic.co/guide/en/elasticsearch/reference/7.17/ignore-malformed.html#ignore-malformed-setting
-   "index.mapping.ignore_malformed": true
+    "index.mapping.ignore_malformed": true
   }
 };
 
-
-const multiGet = (
-  body: ElasticBulkNonFlatPayload,
-  sireneIndexConfig: IndexProcessConfig
-) =>
-  client.mget({
-    index: sireneIndexConfig.alias,
-    body: {
-      ids: body.map(doc => doc[1].siren)
-    }
-  });
-
 /**
- * Append SIREN data to SIRET data
+ * Formatter for siretIndexConfig
+ * Appends SIREN data to SIRET data
  */
 const siretWithUniteLegaleFormatter = async (
   body: ElasticBulkNonFlatPayload,
@@ -109,9 +94,16 @@ const siretWithUniteLegaleFormatter = async (
   if (!body.length) {
     return [];
   }
-  const response = await multiGet(body, extras.sireneIndexConfig);
+  const response = await client.mget({
+    index: sireneIndexConfig.alias,
+    body: {
+      ids: body.map(doc => doc[1].siren)
+    }
+  });
   if (!response.body.docs.length) {
-    logger.error(`Empty SIRENE data returned from ${extras.sireneIndexConfig.alias}, final data may be corrupted`);
+    logger.error(
+      `Empty SIRENE data returned from ${extras.sireneIndexConfig.alias}, final data may be corrupted`
+    );
   }
   return response.body.docs.map((sirenDoc, i) => [
     body[i][0],
@@ -264,7 +256,14 @@ export const siretIndexConfig: IndexProcessConfig = {
     "caractereEmployeurEtablissement"
   ],
   settings: {
-    "index.mapping.ignore_malformed": true,
-    "index.number_of_replicas": process.env.TD_SIRENE_INDEX_NB_REPLICAS || "3"
+    "index.mapping.ignore_malformed": true
   }
 };
+
+/**
+ * Build the CSV file path
+ */
+export const getCsvPath = (
+  destination: string,
+  indexConfig: IndexProcessConfig
+) => path.join(destination, indexConfig.csvFileName);
