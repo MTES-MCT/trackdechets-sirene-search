@@ -8,6 +8,7 @@ import {
 } from "../../indexation/indexInsee.helpers";
 import { unzipAndIndex } from "../../indexation/unzipAndIndex";
 import { elasticSearchClient } from "../../common/elastic";
+import { resetDatabase } from "./helpers";
 
 const csvTmp = path.join(
   __dirname,
@@ -203,6 +204,3 @@ describe("Perform indexation", () => {
     expect(aliases.body[0].index).toContain(indexName);
   });
 });
-function resetDatabase() {
-  throw new Error("Function not implemented.");
-}

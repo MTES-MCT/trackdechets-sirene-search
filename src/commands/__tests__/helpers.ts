@@ -1,5 +1,5 @@
-import { elasticSearchClient } from "../src/common/elastic";
-import { INDEX_NAME_INSEE_PREFIX } from "../src/indexation/indexInsee.helpers";
+import { elasticSearchClient } from "../../common/elastic";
+import { INDEX_NAME_INSEE_PREFIX } from "../../indexation/indexInsee.helpers";
 
 export async function resetDatabase() {
   const indices = await elasticSearchClient.cat.indices({
