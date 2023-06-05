@@ -206,4 +206,3 @@ describe("Perform indexation", () => {
 function resetDatabase() {
   throw new Error("Function not implemented.");
 }
-
