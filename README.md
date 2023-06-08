@@ -63,6 +63,40 @@ Puis de relancer chaque script
 
 Voir le mapping configuré dans `search/src/indexation/indexInsee.helpers.ts`
 
+### Mise à jour partielle via l'API de l'INSEE
+
+- L'API Sirene de l'INSEE permet de télécharger un CSV des établissements mis à jour depuis une date donnée.
+- La commande `index:siret:csv -- chemin_vers_le.csv` permet de réindexer les établissements présents dans ce fichier.
+- Il existe des différences entre le stocketablissement de l'index original, et la réponse de l'API Sirene de l'INSEE :
+
+ ```
+
+- Champs absents de l'API Sirene mais présent dans l'index `stocketablissement-xxx` créé par la commande `index`
+ [
+  ('nombrePeriodesUniteLegale', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+ ('td_search_companies', {'type': 'text'})]
+
+
+- Champs supplémentaires de l'API Sirene et absents du stocketablissement.
+
+[
+  ('activitePrincipaleEtablissementLibelle', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('activitePrincipaleUniteLegaleLibelle', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('changementActivitePrincipaleEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('changementCaractereEmployeurEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('changementDenominationUsuelleEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('changementEnseigneEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('changementEtatAdministratifEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('dateFin', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}), 
+('effectifsMaxEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('effectifsMaxUniteLegale', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('effectifsMinEtablissement', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('effectifsMinUniteLegale', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('societeMissionUniteLegale', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}}),
+('typeVoieEtablissementLibelle', {'type': 'text', 'fields': {'keyword': {'type': 'keyword', 'ignore_above': 256}}})
+]
+ ```
+
 ## Variables d'environnement
 
 - `TD_SIRENE_INDEX_NB_REPLICAS`: à la fin de la création d'un index, le nombre de replicas ES de l'index créé
