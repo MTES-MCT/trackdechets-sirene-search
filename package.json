@@ -22,8 +22,8 @@
     "lint": "eslint -c .eslintrc.js --ext .ts ./src"
   },
   "engines": {
-    "node": "^18",
-    "npm": "^9"
+    "node": "^20",
+    "npm": "^10"
   },
   "repository": {
     "type": "git",
