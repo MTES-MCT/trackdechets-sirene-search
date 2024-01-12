@@ -9,7 +9,6 @@ import { ApiResponse, errors } from "@elastic/elasticsearch";
 import { parse } from "fast-csv";
 import { logger, elasticSearchClient as client } from "..";
 import {
-  ElasticBulkIndexError,
   ElasticBulkNonFlatPayload,
   ElasticBulkNonFlatPayloadWithNull,
   IndexProcessConfig
@@ -189,6 +188,8 @@ const requestBulkIndex = async (
       }
       return;
     } catch (bulkIndexError) {
+      // this error ihappens when the Elasticserver cannot take more data input
+      // so we can sleep and retry
       if (
         bulkIndexError instanceof ResponseError &&
         bulkIndexError.body.error.root_cause.some(
@@ -310,7 +311,7 @@ const getWritableParserAndIndexer = (
     objectMode: true,
     writev: (csvLines, next) => {
       const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(
-        (chunk, i) => {
+        (chunk, _i) => {
           const doc = chunk.chunk;
           // skip lines without "idKey" column because we cannot miss the _id in ES
           if (

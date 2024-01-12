@@ -24,7 +24,7 @@ const logFormat = format.combine(
   format.colorize(),
   format.align(),
   format.printf(info => {
-    return `[${info.timestamp}] [${info.label}]@[${info.level}]: ${info.message}`;
+    return `[${info.timestamp}] [${info.label}]@level@[${info.level}]: ${info.message}`;
   })
 );
 
@@ -38,7 +38,7 @@ const logger_transports_fallbacks = [
         host: "http-intake.logs.datadoghq.com",
         path: `/api/v2/logs?dd-api-key=${
           process.env.DD_API_KEY
-        }&ddsource=nodejs&service=${process.env.DD_APP_NAME || "search"}`,
+        }&ddsource=nodejs&service=${process.env.DD_APP_NAME || "airflow"}`,
         ssl: true
       })
     : new transports.File({ filename: LOG_PATH })

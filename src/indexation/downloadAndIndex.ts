@@ -54,18 +54,19 @@ export const downloadAndIndex = async (
           clearInterval(interval);
           file.close();
           logger.info(`Finished downloading the INSEE archive to ${zipPath}`);
+          const csvPath = getCsvPath(destination, indexConfig);
           try {
-            const csvPath = getCsvPath(destination, indexConfig);
             const indexName = await unzipAndIndex(
               zipPath,
               destination,
               indexConfig
             );
-            await rm(zipPath, { force: true });
-            await rm(csvPath, { force: true });
             resolve(indexName);
           } catch (e: any) {
             reject(e.message);
+          } finally {
+            await rm(zipPath, { force: true });
+            await rm(csvPath, { force: true });
           }
         });
       })
