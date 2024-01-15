@@ -81,3 +81,5 @@ typings/
 .vscode/
 
 .nvmrc
+
+es.cert

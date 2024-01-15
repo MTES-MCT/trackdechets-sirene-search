@@ -199,7 +199,10 @@ const requestBulkIndex = async (
         logger.error(
           `Retrying bulkIndex operation after "es_rejected_execution_exception" (retry ${
             retries + 1
-          }) with exponential backoff`
+          }) with exponential backoff, message of the "error.reason" from the server : "${
+            bulkIndexError.body.error.reason
+          }"`,
+          bulkIndexError.body.error
         );
         await sleep(waitTime);
         // Exponential backoff: double the wait time on each retry

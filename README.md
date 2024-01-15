@@ -17,7 +17,7 @@ Objectif : contruire un moteur de recherche d'établissements français et par l
 - Si vous déployez manuellement, votre serveur doit disposer de [node.js version 18](https://nodejs.org/en/download/), et pour le logging de l'agent [Datadog](https://docs.datadoghq.com/fr/getting_started/agent/)
 - Installez le package en suivant les informations d'installation ci dessus.
 - Pour accéder à ElasticSearch sur Scalingo, télécharger le certificat depuis le dashbord Scalingo
-- Le placer sous le nom `es.cert` dans `search/dist/common` pour que le client node elasticsearch le prenne en compte
+- Le placer sous le nom `es.cert` dans `./dist/common` pour que le client node elasticsearch le prenne en compte
 
 ## Tests
 
@@ -107,13 +107,13 @@ Voir le mapping configuré dans `search/src/indexation/indexInsee.helpers.ts`
 - `NODE_ENV`: Nom de l'environnement, qu sera utilisé pour nommer l'index
 - `DD_ENV`: Datadog tracer
 - `ELASTICSEARCH_URL`: l'URL du serveur
-- `FORCE_LOGGER_CONSOLE`: forcer 
+- `FORCE_LOGGER_CONSOLE`: si 'true' alors emplace le log vers fichier pour forcer les logs vers stdout
 - `MAX_ROWS`: pour tester une indexation partielle, s'arrête après ce nombre de lignes.
 - `INSEE_SIRENE_URL`: utiliser une autre URL pour télécharger le ZIP de la base Sirene "stock unité légale"
 - `INSEE_SIRET_URL`: utiliser une autre URL pour télécharger le ZIP de la base Sirene "stock établissements"
 - `INSEE_SIRET_ZIP_PATH`: chemin direct au fichier ZIP de la base Sirene "stock établissements"
 - `INSEE_SIRENE_ZIP_PATH`: chemin direct au fichier ZIP de la base Sirene "stock unité légale"
 - `LOG_PATH`: remplace le chemin par défaut des logs ()"logs/trackdechets-search.log")
-- `LOG_TO_HTTP`: remplace le logging vers fichier pour un envoie direct par requête HTTP au collecteur "http-intake.logs.datadoghq.com"
+- `LOG_TO_HTTP`: si 'true', alors emplace le log vers fichier pour un envoi direct par requête HTTP au collecteur "http-intake.logs.datadoghq.com"
 - `INDEX_ALIAS_NAME_SUFFIX`: ajouter un suffixe custom
  au nom de l'index créé
