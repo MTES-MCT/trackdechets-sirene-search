@@ -10,10 +10,12 @@ const LOG_PATH =
 
 // Avoid using undefined console.log() in jest context
 const LOG_TO_CONSOLE =
-  process.env.FORCE_LOGGER_CONSOLE && process.env.JEST_WORKER_ID === undefined;
+  process.env.FORCE_LOGGER_CONSOLE === "true" &&
+  process.env.JEST_WORKER_ID === undefined;
 // use http transport when datadog agent installation is impossible (eg. one-off container)
 const LOG_TO_HTTP =
-  process.env.LOG_TO_HTTP && process.env.JEST_WORKER_ID === undefined;
+  process.env.LOG_TO_HTTP === "true" &&
+  process.env.JEST_WORKER_ID === undefined;
 
 const logFormat = format.combine(
   format.label({ label: "trackdechets-sirene-search" }),
@@ -36,9 +38,9 @@ const logger_transports_fallbacks = [
     : LOG_TO_HTTP
     ? new transports.Http({
         host: "http-intake.logs.datadoghq.com",
-        path: `/api/v2/logs?dd-api-key=${
-          process.env.DD_API_KEY
-        }&ddsource=nodejs&service=${process.env.DD_APP_NAME || "airflow"}`,
+        path: `/api/v2/logs?dd-api-key=${process.env.DD_API_KEY}&ddsource=${
+          process.env.DD_APP_SOURCE || "airflow"
+        }&service=${process.env.DD_APP_NAME || "airflow"}`,
         ssl: true
       })
     : new transports.File({ filename: LOG_PATH })

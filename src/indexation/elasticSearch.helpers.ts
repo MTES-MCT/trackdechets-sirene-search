@@ -126,12 +126,12 @@ const logBulkErrorsAndRetry = async (
   body: BulkOperationContainer[]
 ) => {
   if (bulkResponse.errors) {
+    logger.error(
+      `BulkIndex ERROR on index ${indexName}, retrying but the index may be corrupt`
+    );
     for (let k = 0; k < bulkResponse.items.length; k++) {
       const action = bulkResponse.items[k]!;
       const operations: string[] = Object.keys(action);
-      logger.error(
-        `Error during bulkIndex in index ${indexName}, retrying but the index may be corrupt`
-      );
       for (const operation of operations) {
         const opType = operation;
         if (opType && action[opType]?.error) {
