@@ -74,7 +74,7 @@ const finalizeNewIndexRelease = async (
     index: indexName,
     body: {
       index: {
-        number_of_replicas: process.env.TD_SIRENE_INDEX_NB_REPLICAS || "3",
+        number_of_replicas: process.env.TD_SIRENE_INDEX_NB_REPLICAS || "2", // 2 replicas is optimal for a 3 nodes cluster
         refresh_interval: process.env.TD_SIRENE_INDEX_REFRESH_INTERVAL || "1s"
       }
     }
