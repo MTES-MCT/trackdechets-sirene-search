@@ -21,6 +21,30 @@ const pipeline = util.promisify(stream.pipeline);
 const pjson = require("../../package.json");
 
 /**
+ * Max buffer size for the CSV stream reader
+ * Increase memory usage for better performance, but more memory usage
+ * default is 64 KiB (64*1024 = 65_536)
+ * 64 KiB approximatively represents a maximul of 5 CHUNKS in memery
+ **/
+const TD_SIRENE_INDEX_MAX_HIGHWATERMARK: number =
+  parseInt(`${process.env.TD_SIRENE_INDEX_MAX_HIGHWATERMARK}`, 10) || 65_536;
+
+// Max size of documents to bulk index, depends on ES JVM memory available
+const CHUNK_SIZE: number =
+  parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
+
+// Default concurrent requests is 2
+const TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS = isNaN(
+  parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10)
+)
+  ? 1
+  : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10);
+
+// Default sleep is 0
+const TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS: number =
+  parseInt(`${process.env.TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS}`, 10) || 0;
+
+/**
  * Common index name formatter
  */
 const getIndexVersionName = (indexConfig: IndexProcessConfig) =>
@@ -259,10 +283,6 @@ export const bulkIndexByChunks = async (
   indexConfig: IndexProcessConfig,
   indexName: string
 ): Promise<void> => {
-  // Max size of documents to bulk index, depends on ES JVM memory available
-  const CHUNK_SIZE: number =
-    parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 10_000;
-
   // immediat return the chunk when size is greater than the data streamed
   if (CHUNK_SIZE > body.length) {
     await request(indexName, indexConfig, body);
@@ -272,26 +292,28 @@ export const bulkIndexByChunks = async (
   const promises: Promise<void>[] = [];
   // number if chunk requests in-flight
   let numberOfChunkRequests = 0;
-  // Default concurrent requests is 2
-  const maxConcurrentRequests = isNaN(
-    parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10)
-  )
-    ? 2
-    : parseInt(process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS || "1", 10);
-
+  logger.info(
+    `Number of chunks to process : ${Math.floor(body.length / CHUNK_SIZE)}`
+  );
   // loop over other chunks
   for (let i = 0; i < body.length; i += CHUNK_SIZE) {
     const end = i + CHUNK_SIZE;
     const slice = body.slice(i, end);
     const promise = request(indexName, indexConfig, slice);
-    if (maxConcurrentRequests > 1) {
+    if (TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS > 1) {
       promises.push(promise);
       numberOfChunkRequests++; // Increment the in-flight counter
 
       // Check if the maximum number of promises is reached
-      if (numberOfChunkRequests >= maxConcurrentRequests) {
+      if (numberOfChunkRequests >= TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS) {
         await Promise.race(promises); // Wait for any one of the promises to resolve
         numberOfChunkRequests--; // Decrement the in-flight counter
+      }
+    } else {
+      // no concurrency
+      await promise;
+      if (TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS) {
+        await sleep(TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS);
       }
     }
   }
@@ -309,8 +331,8 @@ const getWritableParserAndIndexer = (
 ) =>
   new Writable({
     // Increase memory usage for better performance
-    // 128 KiB (128*1024=131_072)
-    highWaterMark: 131_072,
+    // defauly 16 KiB (16*1024=16384)
+    highWaterMark: TD_SIRENE_INDEX_MAX_HIGHWATERMARK,
     objectMode: true,
     writev: (csvLines, next) => {
       const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(

@@ -103,6 +103,8 @@ Voir le mapping configuré dans `search/src/indexation/indexInsee.helpers.ts`
 - `TD_SIRENE_INDEX_REFRESH_INTERVAL`: à la fin de la création d'un index, l'interval de temps entre deux cycles de rafraichissement (ex."1s")
 - `INDEX_CHUNK_SIZE`: le nombre de lignes du CSV à indexer à la fois dans une requête `bulkIndex` ES
 - `TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS`: le nombre de chunks à indexer à la fois dans de multiples requêtes `bulkIndex` ES en parallèle
+- `TD_SIRENE_INDEX_MAX_HIGHWATERMARK`: mémoire allouée au stream reader du CSV
+- `TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS`: ajouter un temps d'attente en milliseconds entre chaque bulkIndex si `TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS=1` (et seulement dans ce cas, sinon les requêtes se font en parallèle)
 - `INSEE_DOWNLOAD_DIRECTORY`: remplace le répertoire temporaire par défaut pour télécharger le fichier de l'INSEE
 - `NODE_ENV`: Nom de l'environnement, qu sera utilisé pour nommer l'index
 - `DD_ENV`: Datadog tracer
