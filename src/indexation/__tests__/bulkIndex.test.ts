@@ -38,7 +38,7 @@ describe("bulkIndexByChunks", () => {
   test("Should immediately send a request if body size is less than CHUNK_SIZE", async () => {
     // One document to index
     const bodyMock: ElasticBulkNonFlatPayload = [
-      [{ index: { _id: "1", _index: indexNameMock } }, { field: "value1" }]
+      [{ index: { _index: indexNameMock } }, { field: "value1" }]
     ];
     await bulkIndexByChunks(bodyMock, indexConfigMock, indexNameMock);
     expect(esClientMock).toHaveBeenCalledTimes(1);
@@ -74,10 +74,7 @@ describe("bulkIndexByChunks", () => {
   test("Should call dataFormatterFn if it is a function", async () => {
     // One document to index
     const bodyMock: ElasticBulkNonFlatPayload = [
-      [
-        { index: { _id: "1", _index: indexNameMock } },
-        { my_document_field: "value1" }
-      ]
+      [{ index: { _index: indexNameMock } }, { my_document_field: "value1" }]
     ];
     await bulkIndexByChunks(bodyMock, indexConfigMock, indexNameMock);
     expect(indexConfigMock.dataFormatterFn).toHaveBeenCalled();
