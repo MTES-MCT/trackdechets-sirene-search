@@ -143,6 +143,25 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const getOperationsToRetry = (
+  bulkResponse: BulkResponse,
+  bulkQueryBody: BulkOperationContainer[]
+) => {
+  const operationsToRetry: BulkOperationContainer[] = [];
+
+  for (let k = 0; k < bulkResponse.items.length; k++) {
+    const action = bulkResponse.items[k];
+    const operationTypes: string[] = Object.keys(action);
+    for (const opType of operationTypes) {
+      // If the status is 429 it means that we can retry the document
+      if (opType && action[opType]?.error && action[opType]?.status === 429) {
+        operationsToRetry.push(bulkQueryBody[k * 2], bulkQueryBody[k * 2 + 1]); // push [index header, index content]
+      }
+    }
+  }
+  return operationsToRetry;
+};
+
 /**
  * Calls client.bulk and retry
  */
@@ -170,6 +189,8 @@ const requestBulkIndex = async (
         logger.error(
           `BulkIndex ERROR on index ${indexName}, retrying but the index may be corrupt`
         );
+        const toRetry = getOperationsToRetry(bulkResponse.body, body);
+        await requestBulkIndex(indexName, toRetry);
       }
       return;
     } catch (bulkIndexError) {
@@ -301,8 +322,8 @@ const getWritableParserAndIndexer = (
     objectMode: true,
     writev: (csvLines, next) => {
       const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(
-        (chunk, _i) => {
-          const doc = chunk.chunk;
+        (csvLine, _i) => {
+          const doc = csvLine.chunk;
           // skip lines without "idKey" column because we cannot miss the _id in ES
           if (
             doc[indexConfig.idKey] === undefined ||
