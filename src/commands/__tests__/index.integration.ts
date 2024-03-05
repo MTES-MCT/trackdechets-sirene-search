@@ -61,8 +61,6 @@ describe("Perform indexation", () => {
         }
       }
     };
-    // wait for the ES refresh cycle of 1sec
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {
@@ -94,11 +92,10 @@ describe("Perform indexation", () => {
       body: {
         query: {
           match_all: {}
-        }
+        },
+        size: 300
       }
     };
-    // wait for the ES refresh cycle of 1sec
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     await elasticSearchClient.search(searchRequest).then(r => {
       if (r.body.timed_out) {

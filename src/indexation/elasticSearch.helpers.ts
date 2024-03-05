@@ -308,6 +308,13 @@ export const bulkIndexByChunks = async (
   bodyBuffer = [];
 };
 
+export const flushBuffer = async (
+  indexConfig: IndexProcessConfig,
+  indexName: string
+) => {
+  await request(indexName, indexConfig, bodyBuffer);
+};
+
 /**
  * Writable stream that parses CSV to an ES bulk body
  */
@@ -355,6 +362,11 @@ const getWritableParserAndIndexer = (
       )
         .then(() => next())
         .catch(err => next(err));
+    },
+    final: async callback => {
+      // Because we buffer chunks, we need to flush it at the end
+      await flushBuffer(indexConfig, indexName);
+      callback();
     }
   });
 
