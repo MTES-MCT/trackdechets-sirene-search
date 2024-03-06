@@ -4,11 +4,10 @@
   "description": "Indexation of french companies from INSEE's database",
   "main": "src/index.ts",
   "scripts": {
-    "scalingo-postbuild": "npm run build && npm prune --production",
     "build": "tsc",
     "watch": "tsc -w",
     "types": "tsc -noEmit",
-    "start": "npm run build",
+    "start": "npx --yes http-server",
     "index": "npm run index:sirene && npm run index:siret",
     "preindex:dev": "export NODE_ENV=dev && docker-compose up -d elasticsearch && npm run build && npm run index:sirene && npm run index:siret",
     "index:dev": "npm run index:sirene:dev && npm run index:siret:dev",

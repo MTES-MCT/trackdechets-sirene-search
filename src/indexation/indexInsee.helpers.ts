@@ -94,24 +94,37 @@ const siretWithUniteLegaleFormatter = async (
   if (!body.length) {
     return [];
   }
-  const response = await client.mget({
+  const response = await client.search({
     index: sireneIndexConfig.alias,
     body: {
-      ids: body.map(doc => doc[1].siren)
+      size: 10_000,
+      query: {
+        terms: {
+          siren: body.map(doc => doc[1].siren)
+        }
+      }
     }
   });
-  if (!response.body.docs.length) {
+  if (!response.body.hits.total.value) {
     logger.error(
       `Empty SIRENE data returned from ${extras.sireneIndexConfig.alias}, final data may be corrupted`
     );
   }
-  return response.body.docs.map((sirenDoc, i) => [
-    body[i][0],
-    {
-      ...body[i][1],
-      ...sirenDoc._source
-    }
-  ]);
+
+  const sirenDocsLookup = response.body.hits.hits.reduce((acc, hit) => {
+    acc[hit._source.siren] = hit._source;
+    return acc;
+  }, {});
+
+  return body.map(siretDoc => {
+    return [
+      siretDoc[0],
+      {
+        ...siretDoc[1],
+        ...sirenDocsLookup[siretDoc[1].siren]
+      }
+    ];
+  });
 };
 
 /**
