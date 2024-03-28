@@ -20,7 +20,7 @@ const LOG_TO_HTTP =
 const logFormat = format.combine(
   format.label({ label: "trackdechets-sirene-search" }),
   format.timestamp({
-    format: "HH-MM:ss YYYY-MM-DD"
+    format: "HH-mm:ss YYYY-MM-DD"
   }),
   format.prettyPrint(),
   format.colorize(),

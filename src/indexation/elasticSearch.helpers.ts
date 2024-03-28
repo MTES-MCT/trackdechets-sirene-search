@@ -1,6 +1,6 @@
 import fs from "fs";
-import stream, { Writable } from "stream";
-import util from "util";
+import { Writable } from "stream";
+import { pipeline } from "node:stream/promises";
 import {
   BulkOperationContainer,
   BulkResponse
@@ -17,7 +17,6 @@ import { INDEX_ALIAS_NAME_SEPARATOR } from "./indexInsee.helpers";
 
 const { ResponseError } = errors;
 
-const pipeline = util.promisify(stream.pipeline);
 const pjson = require("../../package.json");
 
 /**
@@ -98,8 +97,7 @@ const finalizeNewIndexRelease = async (
     index: indexName,
     body: {
       index: {
-        number_of_replicas: process.env.TD_SIRENE_INDEX_NB_REPLICAS || "2", // 2 replicas is optimal for a 3 nodes cluster
-        refresh_interval: process.env.TD_SIRENE_INDEX_REFRESH_INTERVAL || "1s"
+        number_of_replicas: process.env.TD_SIRENE_INDEX_NB_REPLICAS || "2" // 2 replicas is optimal for a 3 nodes cluster
       }
     }
   });
@@ -141,48 +139,28 @@ const finalizeNewIndexRelease = async (
   }
 };
 
-/**
- * Log bulkIndex errors and retries in some cases
- */
-const logBulkErrorsAndRetry = async (
-  indexName: string,
-  bulkResponse: BulkResponse,
-  body: BulkOperationContainer[]
-) => {
-  if (bulkResponse.errors) {
-    logger.error(
-      `BulkIndex ERROR on index ${indexName}, retrying but the index may be corrupt`
-    );
-    for (let k = 0; k < bulkResponse.items.length; k++) {
-      const action = bulkResponse.items[k]!;
-      const operations: string[] = Object.keys(action);
-      for (const operation of operations) {
-        const opType = operation;
-        if (opType && action[opType]?.error) {
-          // If the status is 429 it means that we can retry the document
-          if (action[opType]?.status === 429) {
-            try {
-              await client.index({
-                index: indexName,
-                id: body[k * 2].index?._id as string,
-                body: body[k * 2 + 1],
-                type: "_doc",
-                refresh: false
-              });
-            } catch (err) {
-              // do nothing
-              return;
-            }
-          }
-        }
-      }
-    }
-  }
-};
-
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+const getOperationsToRetry = (
+  bulkResponse: BulkResponse,
+  bulkQueryBody: BulkOperationContainer[]
+) => {
+  const operationsToRetry: BulkOperationContainer[] = [];
+
+  for (let k = 0; k < bulkResponse.items.length; k++) {
+    const action = bulkResponse.items[k];
+    const operationTypes: string[] = Object.keys(action);
+    for (const opType of operationTypes) {
+      // If the status is 429 it means that we can retry the document
+      if (opType && action[opType]?.error && action[opType]?.status === 429) {
+        operationsToRetry.push(bulkQueryBody[k * 2], bulkQueryBody[k * 2 + 1]); // push [index header, index content]
+      }
+    }
+  }
+  return operationsToRetry;
+};
 
 /**
  * Calls client.bulk and retry
@@ -193,7 +171,7 @@ const requestBulkIndex = async (
 ): Promise<void> => {
   const maxRetries = 5;
   let retries = 0;
-  let waitTime = 1000; // Initial wait time in milliseconds
+  let waitTime = 5000; // in milliseconds
 
   if (!body || !body.length) {
     // nothing to index
@@ -207,12 +185,16 @@ const requestBulkIndex = async (
         _source_excludes: ["items.index._*", "took"]
       });
       // Log error data and continue
-      if (bulkResponse) {
-        await logBulkErrorsAndRetry(indexName, bulkResponse.body, body);
+      if (bulkResponse && bulkResponse.body.errors) {
+        logger.error(
+          `BulkIndex ERROR on index ${indexName}, retrying but the index may be corrupt`
+        );
+        const toRetry = getOperationsToRetry(bulkResponse.body, body);
+        await requestBulkIndex(indexName, toRetry);
       }
       return;
     } catch (bulkIndexError) {
-      // this error ihappens when the Elasticserver cannot take more data input
+      // this error happens when the Elasticserver cannot take more data input
       // so we can sleep and retry
       if (
         bulkIndexError instanceof ResponseError &&
@@ -274,6 +256,15 @@ const request = async (
   );
 };
 
+// Queue holding the bulk indexation requests promises
+// It's a global variable to keep track of the promises
+// across the different chunks calls.
+const indexPromisesQueue: Promise<void>[] = [];
+
+// Buffer to accumulate the body before indexing,
+// to avoid indexing chunks that are too small
+let bodyBuffer: ElasticBulkNonFlatPayload = [];
+
 /**
  * Bulk Index and collect errors
  * controls the maximum chunk size because unzip does not
@@ -283,43 +274,45 @@ export const bulkIndexByChunks = async (
   indexConfig: IndexProcessConfig,
   indexName: string
 ): Promise<void> => {
-  // immediat return the chunk when size is greater than the data streamed
-  if (CHUNK_SIZE > body.length) {
-    await request(indexName, indexConfig, body);
+  // Accumulate chucks in a buffer to avoid indexing chunks that are too small
+  bodyBuffer.push(...body);
+  if (bodyBuffer.length < CHUNK_SIZE) {
     return;
   }
 
-  const promises: Promise<void>[] = [];
-  // number if chunk requests in-flight
-  let numberOfChunkRequests = 0;
-  logger.info(
-    `Number of chunks to process : ${Math.floor(body.length / CHUNK_SIZE)}`
-  );
-  // loop over other chunks
-  for (let i = 0; i < body.length; i += CHUNK_SIZE) {
-    const end = i + CHUNK_SIZE;
-    const slice = body.slice(i, end);
-    const promise = request(indexName, indexConfig, slice);
-    if (TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS > 1) {
-      promises.push(promise);
-      numberOfChunkRequests++; // Increment the in-flight counter
+  for (let i = 0; i < bodyBuffer.length; i += CHUNK_SIZE) {
+    if (indexPromisesQueue.length >= TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS) {
+      await Promise.race(indexPromisesQueue);
+    }
 
-      // Check if the maximum number of promises is reached
-      if (numberOfChunkRequests >= TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS) {
-        await Promise.race(promises); // Wait for any one of the promises to resolve
-        numberOfChunkRequests--; // Decrement the in-flight counter
-      }
-    } else {
-      // no concurrency
-      await promise;
-      if (TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS) {
-        await sleep(TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS);
-      }
+    const end = i + CHUNK_SIZE;
+    const slice = bodyBuffer.slice(i, end);
+    const promise = request(indexName, indexConfig, slice);
+
+    const autoCleanPromise = promise.then(() => {
+      indexPromisesQueue.splice(
+        indexPromisesQueue.indexOf(autoCleanPromise),
+        1
+      );
+    });
+
+    indexPromisesQueue.push(autoCleanPromise);
+
+    // Wait between chunks can be usefull to slow down the write stream,
+    // and avoid having too many small chunks in the queue
+    if (TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS) {
+      await sleep(TD_SIRENE_INDEX_SLEEP_BETWEEN_CHUNKS);
     }
   }
-  if (promises.length > 0) {
-    await Promise.all(promises);
-  }
+
+  bodyBuffer = [];
+};
+
+export const flushBuffer = async (
+  indexConfig: IndexProcessConfig,
+  indexName: string
+) => {
+  await request(indexName, indexConfig, bodyBuffer);
 };
 
 /**
@@ -331,13 +324,13 @@ const getWritableParserAndIndexer = (
 ) =>
   new Writable({
     // Increase memory usage for better performance
-    // defauly 16 KiB (16*1024=16384)
+    // default is 16 KiB (16*1024=16384)
     highWaterMark: TD_SIRENE_INDEX_MAX_HIGHWATERMARK,
     objectMode: true,
     writev: (csvLines, next) => {
       const body: ElasticBulkNonFlatPayloadWithNull = csvLines.map(
-        (chunk, _i) => {
-          const doc = chunk.chunk;
+        (csvLine, _i) => {
+          const doc = csvLine.chunk;
           // skip lines without "idKey" column because we cannot miss the _id in ES
           if (
             doc[indexConfig.idKey] === undefined ||
@@ -351,7 +344,6 @@ const getWritableParserAndIndexer = (
             return [
               {
                 index: {
-                  _id: doc[indexConfig.idKey],
                   _index: indexName,
                   // Next major ES version won't need _type anymore
                   _type: "_doc"
@@ -370,6 +362,11 @@ const getWritableParserAndIndexer = (
       )
         .then(() => next())
         .catch(err => next(err));
+    },
+    final: async callback => {
+      // Because we buffer chunks, we need to flush it at the end
+      await flushBuffer(indexConfig, indexName);
+      callback();
     }
   });
 
@@ -383,36 +380,41 @@ export const streamReadAndIndex = async (
   isReleaseIndexation = true
 ): Promise<string> => {
   const headers = indexConfig.headers;
-  const writableStream = getWritableParserAndIndexer(indexConfig, indexName);
   // stop parsing CSV after MAX_ROWS
   const maxRows = parseInt(process.env.MAX_ROWS as string, 10);
-  await pipeline(
-    fs.createReadStream(csvPath),
-    parse({
-      headers,
-      ignoreEmpty: true,
-      discardUnmappedColumns: true,
-      ...(maxRows && { maxRows })
+
+  const readableStream = fs.createReadStream(csvPath);
+  const parseCsvStream = parse({
+    headers,
+    ignoreEmpty: true,
+    discardUnmappedColumns: true,
+    ...(maxRows && { maxRows })
+  })
+    .transform((data, callback) => {
+      if (!!indexConfig.transformCsv) {
+        indexConfig.transformCsv(data, callback);
+      } else {
+        callback(null, data);
+      }
     })
-      .transform((data, callback) => {
-        if (!!indexConfig.transformCsv) {
-          indexConfig.transformCsv(data, callback);
-        } else {
-          callback(null, data);
-        }
-      })
-      .on("error", error => {
-        throw error;
-      })
-      .on("end", async (rowCount: number) => {
-        logger.info(`Finished parsing ${rowCount} CSV rows`);
-      }),
-    writableStream
-  );
+    .on("error", error => {
+      throw error;
+    })
+    .on("end", async (rowCount: number) => {
+      logger.info(`Finished parsing ${rowCount} CSV rows`);
+    });
+  const writableStream = getWritableParserAndIndexer(indexConfig, indexName);
+
+  await pipeline(readableStream, parseCsvStream, writableStream);
+
   // roll-over index alias
   if (isReleaseIndexation) {
     await finalizeNewIndexRelease(indexConfig.alias, indexName);
   }
+
+  // Auto refresh is disabled, we manually refresh after each indexation
+  await client.indices.refresh({ index: indexName });
+
   logger.info(`Finished indexing ${indexName} with alias ${indexConfig.alias}`);
   return csvPath;
 };

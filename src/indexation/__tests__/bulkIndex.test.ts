@@ -24,24 +24,14 @@ describe("bulkIndexByChunks", () => {
     dataFormatterFn: dataFormatterFnMock
   };
   const indexNameMock = "test_index";
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = parseInt(`${process.env.INDEX_CHUNK_SIZE}`, 10) || 100;
 
   beforeEach(() => {
     process.env.TD_SIRENE_INDEX_MAX_CONCURRENT_REQUESTS = "1";
-    process.env.INDEX_CHUNK_SIZE = `${CHUNK_SIZE}`;
     esClientMock.mockReset();
     dataFormatterFnMock.mockReset();
     esClientMock.mockImplementation(() => Promise.resolve());
     dataFormatterFnMock.mockImplementation((body, _) => Promise.resolve(body));
-  });
-
-  test("Should immediately send a request if body size is less than CHUNK_SIZE", async () => {
-    // One document to index
-    const bodyMock: ElasticBulkNonFlatPayload = [
-      [{ index: { _id: "1", _index: indexNameMock } }, { field: "value1" }]
-    ];
-    await bulkIndexByChunks(bodyMock, indexConfigMock, indexNameMock);
-    expect(esClientMock).toHaveBeenCalledTimes(1);
   });
 
   test("Should slice the body into chunks and send each as a separate request", async () => {
@@ -72,13 +62,12 @@ describe("bulkIndexByChunks", () => {
   });
 
   test("Should call dataFormatterFn if it is a function", async () => {
-    // One document to index
-    const bodyMock: ElasticBulkNonFlatPayload = [
-      [
-        { index: { _id: "1", _index: indexNameMock } },
-        { my_document_field: "value1" }
-      ]
-    ];
+    const bodyMock: ElasticBulkNonFlatPayload = Array(CHUNK_SIZE + 1)
+      .fill(0)
+      .map((_, i) => [
+        { index: { _id: `${i}`, _index: indexNameMock } },
+        { my_document_field: `value${i}` }
+      ]);
     await bulkIndexByChunks(bodyMock, indexConfigMock, indexNameMock);
     expect(indexConfigMock.dataFormatterFn).toHaveBeenCalled();
   });

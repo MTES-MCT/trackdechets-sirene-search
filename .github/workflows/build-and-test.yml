@@ -35,5 +35,6 @@ jobs:
           curl -fsSL "$ELASTICSEARCH_URL/_cat/health?h=status"
       - name: Run tests
         env:
+          INDEX_CHUNK_SIZE: 100
           ELASTICSEARCH_URL: http://localhost:${{ job.services.elasticsearch.ports[9200] }}
         run: npm test -- --forceExit
