@@ -94,6 +94,23 @@ const siretWithUniteLegaleFormatter = async (
   if (!body.length) {
     return [];
   }
+
+  const result: ElasticBulkNonFlatPayload = [];
+
+  const chunkSize = 10_000; // Max number of SIREN to search in one request
+  for (let i = 0; i < body.length; i += chunkSize) {
+    const chunk = body.slice(i, i + chunkSize);
+    const chunkResult = await siretWithUniteLegaleChunkFormatter(chunk, extras);
+    result.push(...chunkResult);
+  }
+
+  return result;
+};
+
+const siretWithUniteLegaleChunkFormatter = async (
+  body: ElasticBulkNonFlatPayload,
+  extras: { sireneIndexConfig: IndexProcessConfig }
+): Promise<ElasticBulkNonFlatPayload> => {
   const response = await client.search({
     index: sireneIndexConfig.alias,
     body: {
