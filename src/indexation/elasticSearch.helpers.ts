@@ -386,7 +386,6 @@ export const streamReadAndIndex = async (
   const parseCsvStream = parse({
     headers: true,
     ignoreEmpty: true,
-    discardUnmappedColumns: true,
     ...(maxRows && { maxRows })
   })
     .transform((data, callback) => {
