@@ -110,11 +110,11 @@ describe("Perform indexation", () => {
         expect.arrayContaining([
           expect.objectContaining({
             _source: {
-              siren: "005410345",
-              nic: "00010",
-              siret: "00541034500010",
+              siren: "000325175",
+              nic: "00016",
+              siret: "00032517500016",
               statutDiffusionEtablissement: "O",
-              dateCreationEtablissement: "",
+              dateCreationEtablissement: "2000-09-26",
               trancheEffectifsEtablissement: "",
               anneeEffectifsEtablissement: "",
               activitePrincipaleRegistreMetiersEtablissement: "",
