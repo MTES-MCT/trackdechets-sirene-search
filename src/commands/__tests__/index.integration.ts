@@ -105,7 +105,7 @@ describe("Perform indexation", () => {
         throw new Error(`${r.warnings}`);
       }
       expect(r.body.hits.hits).toBeInstanceOf(Array);
-      expect(r.body.hits.total.value).toEqual(297);
+      expect(r.body.hits.total.value).toEqual(299);
       expect(r.body.hits.hits).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -114,16 +114,18 @@ describe("Perform indexation", () => {
               nic: "00010",
               siret: "00541034500010",
               statutDiffusionEtablissement: "O",
-              dateCreationEtablissement: "",
+              dateCreationEtablissement: "1900-01-01",
               trancheEffectifsEtablissement: "",
               anneeEffectifsEtablissement: "",
               activitePrincipaleRegistreMetiersEtablissement: "",
-              dateDernierTraitementEtablissement: "",
+              dateDernierTraitementEtablissement: "2024-03-22T15:40:57",
               etablissementSiege: "true",
-              nombrePeriodesEtablissement: "1",
+              nombrePeriodesEtablissement: "2",
               complementAdresseEtablissement: "",
               numeroVoieEtablissement: "",
               indiceRepetitionEtablissement: "",
+              dernierNumeroVoieEtablissement: "",
+              indiceRepetitionDernierNumeroVoieEtablissement: "",
               typeVoieEtablissement: "RTE",
               libelleVoieEtablissement: "DE DOULLENS",
               codePostalEtablissement: "80100",
@@ -135,6 +137,9 @@ describe("Perform indexation", () => {
               libelleCedexEtablissement: "",
               codePaysEtrangerEtablissement: "",
               libellePaysEtrangerEtablissement: "",
+              identifiantAdresseEtablissement: "",
+              coordonneeLambertAbscisseEtablissement: "",
+              coordonneeLambertOrdonneeEtablissement: "",
               complementAdresse2Etablissement: "",
               numeroVoie2Etablissement: "",
               indiceRepetition2Etablissement: "",
