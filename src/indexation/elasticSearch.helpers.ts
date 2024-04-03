@@ -379,13 +379,12 @@ export const streamReadAndIndex = async (
   indexConfig: IndexProcessConfig,
   isReleaseIndexation = true
 ): Promise<string> => {
-  const headers = indexConfig.headers;
   // stop parsing CSV after MAX_ROWS
   const maxRows = parseInt(process.env.MAX_ROWS as string, 10);
 
   const readableStream = fs.createReadStream(csvPath);
   const parseCsvStream = parse({
-    headers,
+    headers: true,
     ignoreEmpty: true,
     discardUnmappedColumns: true,
     ...(maxRows && { maxRows })
