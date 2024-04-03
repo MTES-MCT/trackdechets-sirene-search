@@ -106,9 +106,6 @@ describe("Perform indexation", () => {
       }
       expect(r.body.hits.hits).toBeInstanceOf(Array);
       expect(r.body.hits.total.value).toEqual(299);
-      console.log(
-        r.body.hits.hits.filter(hit => hit._source.siren === "005410345")
-      );
       expect(r.body.hits.hits).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
