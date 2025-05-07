@@ -229,6 +229,9 @@ export const siretIndexConfig: IndexProcessConfig = {
           type: "text",
           copy_to: "td_search_companies"
         },
+        etatAdministratifEtablissement: {
+          type: "keyword"
+        },
         td_search_companies: {
           type: "text"
         }
