@@ -232,6 +232,9 @@ export const siretIndexConfig: IndexProcessConfig = {
         etatAdministratifEtablissement: {
           type: "keyword"
         },
+        dateDernierTraitementEtablissement: {
+          type: "date"
+        },
         td_search_companies: {
           type: "text"
         }
