@@ -13,7 +13,7 @@ import { sireneIndexConfig } from "../indexation/indexInsee.helpers";
  */
 const sireneUrl =
   process.env.INSEE_SIRENE_URL ||
-  "https://files.data.gouv.fr/insee-sirene/StockUniteLegale_utf8.zip";
+  "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockUniteLegale_utf8.zip";
 
 process.on("exit", function () {
   console.log(`Command index:sirene finished`);

@@ -149,7 +149,7 @@ const siretWithUniteLegaleChunkFormatter = async (
  */
 export const siretUrl =
   process.env.INSEE_SIRET_URL ||
-  "https://files.data.gouv.fr/insee-sirene/StockEtablissement_utf8.zip";
+  "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockEtablissement_utf8.zip";
 
 export const siretIndexConfig: IndexProcessConfig = {
   alias: `${INDEX_NAME_INSEE_PREFIX}etablissement${INDEX_ALIAS_NAME_SEPARATOR}${
